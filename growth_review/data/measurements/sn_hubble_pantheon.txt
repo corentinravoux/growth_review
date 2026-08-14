@@ -1,0 +1,15 @@
+# Pantheon SN Ia Hubble diagram, binned (Scolnic et al. 2018, arXiv:1710.00845).
+# 1048 SNe in 11 redshift bins. The distance column is the ratio of the binned
+# luminosity distance to the fiducial-cosmology prediction, hence ~1 everywhere.
+# z  n_sn  dl_over_dl_fid  err
+0.0522434 211 0.992252 0.0064251
+0.176735 319 1.00145 0.0045428
+0.31327 236 0.998081 0.00470369
+0.461426 93 1.00424 0.00757192
+0.607044 65 1.00879 0.0102416
+0.770816 61 1.00159 0.0120906
+0.918471 40 1.00876 0.0147919
+1.04771 7 0.995985 0.0344824
+1.30977 10 1.0082 0.0360414
+1.57546 3 1.01177 0.0642124
+1.83995 2 0.919096 0.0689996

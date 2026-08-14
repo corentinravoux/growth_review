@@ -1,0 +1,17 @@
+zmin,zmax,zeff,fs8_err,label,paper
+0.02,0.06,0.045,0.19,ZTF,carreres et al. 2023
+0.02,0.06,0.05,0.14,LSST_Full,rosselli et al. 2025
+0.02,0.10,0.08,0.09,LSST_Full,rosselli et al. 2025 
+0.02,0.14,0.11,0.08,LSST_Full,rosselli et al. 2025 
+0.06,0.10,0.08,0.12,LSST_Full,rosselli et al. 2025 
+0.10,0.14,0.12,0.12,LSST_Full,rosselli et al. 2025 
+0.02,0.06,0.05,0.16,LSST_Specz,rosselli et al. 2025
+0.02,0.10,0.08,0.12,LSST_Specz,rosselli et al. 2025
+0.02,0.14,0.11,0.09,LSST_Specz,rosselli et al. 2025
+0.06,0.10,0.08,0.14,LSST_Specz,rosselli et al. 2025
+0.10,0.14,0.12,0.15,LSST_Specz,rosselli et al. 2025
+0.02,0.06,0.05,0.18,LSST_Photo-typed,rosselli et al. 2025
+0.02,0.10,0.08,0.12,LSST_Photo-typed,rosselli et al. 2025
+0.02,0.14,0.11,0.10,LSST_Photo-typed,rosselli et al. 2025
+0.06,0.10,0.08,0.14,LSST_Photo-typed,rosselli et al. 2025
+0.10,0.14,0.12,0.15,LSST_Photo-typed,rosselli et al. 2025          

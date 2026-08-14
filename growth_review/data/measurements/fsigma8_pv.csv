@@ -1,0 +1,173 @@
+# fsigma8 measurements from peculiar-velocity data -- machine-readable compilation
+# Compiled 2026-08-13. Companion to fsigma8-pv-compilation.md (discussion) and
+# pv-surveys.md (surveys, systematics).
+#
+# FORMAT: CSV, comma-separated, fields quoted where they contain commas.
+#   pandas:  pd.read_csv("fsigma8_pv_data.txt", comment="#")
+#
+# COLUMNS
+#   key          short identifier, unique
+#   authors      first author + et al.
+#   year         publication year of the cited version
+#   fsigma8      central value
+#   err_lo       1-sigma lower (statistical unless err_sys given)
+#   err_hi       1-sigma upper
+#   err_sys      systematic error where the authors quote one separately, else empty
+#   sigma8_norm  lin      = the paper normalises to the LINEAR sigma8 and writes its
+#                           result fsigma8_lin (or fsigma8_L). Verified in the paper's
+#                           own result sentence.
+#                unstated = the paper writes plain fsigma8 without specifying.
+#                DO NOT MIX THE TWO ON ONE PLOT WITHOUT SAYING SO -- see WARNING 10.
+#   z_eff        effective redshift. Empty on 4 rows, and VERIFIED 2026-08-13 that the
+#                authors themselves assign none:
+#                  Stiskalek2026 -- his Table 1 prints "-" for the Joint TFR+SNe row.
+#                    Individual samples DO have one (CF4 TFR W1 0.017, CF4 TFR i 0.022,
+#                    Pantheon+ 0.026, 6dF FP 0.035, SDSS FP 0.037); the joint fit does not.
+#                  Stahl2021 -- sample cut at z < 0.07, no effective redshift quoted.
+#                  Wang2026_* -- the analysis is framed in survey depth (h^-1 Mpc).
+#                Stiskalek's Fig. 4 plots literature points at sample mean redshifts he
+#                computes himself; those are his assignments, not the original authors'.
+#   probe        PV     = the peculiar velocity field is measured directly, whether
+#                         from a distance indicator (TF/FP/SNe) or from the
+#                         correlated magnitude scatter it induces (Feix, Nguyen)
+#                PV+RSD = velocities combined with a redshift-survey density field
+#   indicator    TF | FP | SN | TF+FP | SN+TF | TF+SN | mix | lum
+#                mix = heterogeneous compilation (Cosmicflows-like)
+#                lum = galaxy luminosity fluctuations, not a direct distance indicator
+#                      (still a peculiar-velocity probe -- see probe column)
+#   dataset      data used
+#   estimator    method
+#   arxiv        arXiv identifier, empty if unresolved
+#   journal      journal reference, empty if none found
+#   method_family  what the estimator does to the data BEFORE fitting. Assigned
+#                  paper by paper, 2026-08-14; see growth_review/methods.py for the
+#                  sentence from each paper that fixes its assignment.
+#                  field_level   = the likelihood of the observed density/velocity
+#                                  FIELD VALUES is written through a model covariance
+#                                  and maximised or sampled. No summary statistic is
+#                                  measured first ("maximum likelihood fields").
+#                  two_point     = a two-point statistic (correlation function, power
+#                                  spectrum, momentum spectrum) is MEASURED, then fitted.
+#                  vd_linear     = the velocity field is PREDICTED from a redshift-survey
+#                                  density field by LINEAR THEORY (directly, or through a
+#                                  Wiener filter / constrained realisation, which is still
+#                                  linear dynamics) and compared with measured velocities.
+#                  vd_dynamical  = same comparison, but the field is evolved from initial
+#                                  conditions by a GRAVITY SOLVER acting on a particle
+#                                  field (LPT, COLA, particle-mesh, N-body), so the
+#                                  prediction reaches the mildly non-linear regime.
+#                                  DEFINED BUT EMPTY -- see WARNING 13.
+#                  consensus     = correlated combination of several of the above
+#                                  (DESI DR1 only) -- never group it with a family.
+#   fit_technique  the fitting step, kept separate from method_family so that
+#                  "forward likelihood" (Boruah), "forward model" (Boubel) and
+#                  "hierarchical Bayes" (Stiskalek) are not lost: likelihood | mcmc |
+#                  chi2 | forward_likelihood | forward_model | hierarchical_bayes |
+#                  combination.
+#   provenance   src = value read from the paper itself (abstract, or body where stated)
+#                der = the paper does NOT quote fsigma8; the tabulated number is a
+#                      relabelling or derivation (Omega_m^0.55*sigma8, beta, or the
+#                      midpoint of a quoted interval). Equal to fsigma8 only under GR
+#                      -- see WARNING 7
+#                T24 = value transcribed from Turner (2024) arXiv:2411.19484 Table 1,
+#                      NOT independently verified. Currently unused -- every row has
+#                      been traced to its source.
+#
+# WARNINGS
+#  1. ROWS ARE NOT INDEPENDENT. 6dFGSv, SDSS PV, SFI++, 2MTF, 2M++ and the low-z SN
+#     samples recur across most rows; CF3/CF4/CF4++ *contain* several of them.
+#     Do not treat this table as a set of independent points and do not average it.
+#  2. The four DESI_DR1_* rows are three estimators applied to ONE dataset plus their
+#     correlated consensus. Use the consensus row alone, never the four together.
+#  3. Achitouv2017_gg and Achitouv2017_vg are two results in one paper.
+#     Wang2026_group and Wang2026_local likewise, and measure different quantities.
+#  4. As of 2026-08-13 NO row is second-hand: every value was traced to the paper.
+#     The T24 code is retained in the schema only for future additions.
+#  5. Measurements only. Simulation-validation studies (Dixon+2026, Tonegawa+2024)
+#     are NOT in this file; they are discussed in fsigma8-pv-compilation.md section 2.
+#  6. Dupuy2019 errors are the observational (0.03) and cosmic-variance (0.11) terms
+#     combined in quadrature; the authors quote them separately.
+#  7. provenance=der rows are CIRCULAR if used to test gravity. Carrick2015 measures
+#     Omega_m^0.55*sigma8, Nusser2017 quotes an interval on the same combination, and
+#     Davis2011's value follows from beta. Identifying these with fsigma8 assumes
+#     f = Omega_m^0.55, i.e. assumes GR. Exclude them from any growth-index fit.
+#  8. SIX values in Turner (2024) Table 1 disagree with the source: Said2020,
+#     Boubel2024, Dupuy2019, Turner2023, Beutler2012 (0.423+/-0.055 not 0.428
+#     +0.079/-0.068) and Johnson2014 (error 0.065 not 0.055).
+#  9. REMOVED 2026-08-13, out of scope -- redshift-space distortions of the 6dFGS
+#     *redshift* survey, no measured distances, therefore not peculiar-velocity
+#     measurements. Recorded here so the difference from Turner (2024) Table 1,
+#     which carries all four, is explicit:
+#         Achitouv+2017 galaxy-galaxy   0.42 +/- 0.06   1606.03092
+#         Achitouv+2017 void-galaxy     0.39 +/- 0.11   1606.03092  (shares galaxies
+#                                                        with the row above)
+#         Beutler+2012                  0.423 +/- 0.055 1204.4725
+#         Blake, Carter & Koda 2018     0.38 +/- 0.12   1801.04969
+#
+#
+# 10. LINEAR vs NON-LINEAR sigma8. Six rows report fsigma8_lin: Carrick2015,
+#     LilowNusser2021, HollingerHudson2024, Boruah2020, Stahl2021, Stiskalek2026.
+#     All six are velocity-density comparison / reconstruction analyses, which
+#     predict the velocity field from linear theory and so naturally constrain the
+#     linear normalisation. The offset is NOT negligible: Carrick et al. quote both
+#     for the same data -- fsigma8_lin = 0.401 +/- 0.024 and fsigma8 = 0.427 +/- 0.026,
+#     a 6.5% difference, larger than several error bars in this table.
+# 11. Johnson2014's headline is fsigma8(z=0) = 0.418 +/- 0.065 (their conclusions);
+#     their Table also lists 0.428 +0.079/-0.068 and 0.417 +0.097/-0.084 for other
+#     analysis choices. Turner (2024) gives 0.418 +/- 0.055 -- the 0.055 is Beutler's
+#     error, quoted in the adjacent sentence of Johnson's own text.
+#
+# 12. A linear template on velocity correlation functions recovers fsigma8 5.2%
+#     BELOW truth (Tonegawa+2024, MNRAS 529, 4787 / arXiv:2309.14457: 0.361 linear
+#     vs 0.376 perturbation-theory on the same HR4 mocks). Many correlation-function
+#     rows here use a linear template. That study is not a row in this file.
+#
+# 13. NO ROW USES A PARTICLE-EVOLVING FORWARD MODEL. Every velocity--density
+#     comparison here predicts the velocity field with LINEAR dynamics. Checked
+#     2026-08-14 against the four strongest candidates, and none of them quotes an
+#     fsigma8 value at all:
+#       Graziani+2019 (1901.01818)  hierarchical Bayesian, but "within the linear regime"
+#       Boruah, Lavaux & Hudson 2022 (2111.15535)  Bayesian forward model, no fsigma8
+#       Valade+2026 (2602.03699)    "particle-mesh gravity solver" on CF4, no fsigma8
+#       Manticore-Local (2505.10682) BORG nonlinear solver on 2M++, no fsigma8
+#     The "forward model" labels carried by Boubel2024, Stiskalek2026, Boruah2020 and
+#     Stahl2021 refer to forward-modelling the DISTANCE INDICATOR (Tully-Fisher scatter,
+#     Malmquist bias), not the dynamics of the density field. Do not read them as
+#     non-linear.
+#
+key,authors,year,fsigma8,err_lo,err_hi,err_sys,sigma8_norm,z_eff,probe,indicator,dataset,estimator,method_family,fit_technique,arxiv,journal,provenance
+Johnson2014,Johnson et al.,2014,0.418,0.065,0.065,,unstated,0.00,PV,FP,6dFGSv,maximum_likelihood,field_level,likelihood,1404.3799,"MNRAS 444, 3926",src
+Howlett2017,Howlett et al.,2017,0.51,0.08,0.09,,unstated,0.00,PV,TF,2MTF,velocity_power_spectrum_scale_independent,two_point,likelihood,1706.05130,,src
+AdamsBlake2017,Adams & Blake,2017,0.424,0.064,0.067,,unstated,0.00,PV+RSD,FP,6dFGS,density_velocity_cross_covariance,field_level,likelihood,1706.05205,,src
+LilowNusser2021,Lilow & Nusser,2021,0.367,0.060,0.060,,lin,0.013,PV,mix,CF3+2MRS,constrained_realisations,vd_linear,likelihood,2102.07291,,src
+Boubel2024,Boubel et al.,2024,0.35,0.03,0.03,,unstated,0.017,PV,TF,Tully-Fisher forward model,forward_model,vd_linear,forward_model,2301.12648,,src
+Davis2011,Davis et al.,2011,0.310,0.040,0.040,,unstated,0.020,PV,TF,SFI++,reconstruction_from_beta,vd_linear,chi2,1011.3114,,der
+Carrick2015,Carrick et al.,2015,0.401,0.024,0.024,,lin,0.020,PV,mix,2M++,reconstruction_Om055sigma8,vd_linear,chi2,1504.04627,,der
+Huterer2017,Huterer et al.,2017,0.428,0.045,0.048,,unstated,0.020,PV,SN,low-z SNe + galaxy velocities,maximum_likelihood,field_level,likelihood,1611.09862,JCAP 05 (2017) 015,src
+HollingerHudson2024,Hollinger & Hudson,2024,0.362,0.023,0.023,,lin,0.020,PV,mix,2M++ (bias-corrected by 1.04),reconstruction,vd_linear,likelihood,2312.03904,,src
+Boruah2020,Boruah et al.,2020,0.400,0.017,0.017,,lin,0.022,PV,SN+TF,465 SNe + SFI++ + 2MTF vs 2M++,reconstruction,vd_linear,forward_likelihood,1912.09383,"MNRAS 498, 2703",src
+Nusser2017,Nusser,2017,0.400,0.080,0.080,,unstated,0.027,PV,mix,CF3,velocity_density_correlation_interval_midpoint,two_point,chi2,1703.05324,,der
+Qin2019,Qin et al.,2019,0.404,0.081,0.082,,unstated,0.03,PV+RSD,TF+FP,2MTF + 6dFGSv,momentum_power_spectrum,two_point,likelihood,1906.02874,,src
+Said2020,Said et al.,2020,0.338,0.027,0.027,,unstated,0.035,PV,FP,6dFGS + SDSS,reconstruction_beta,vd_linear,likelihood,2007.04993,,src
+AdamsBlake2020,Adams & Blake,2020,0.384,0.052,0.052,0.061,unstated,0.045,PV+RSD,FP,6dFGS,joint_rsd_pv,field_level,likelihood,2004.06399,,src
+Turner2023,Turner et al.,2023,0.358,0.075,0.075,,unstated,0.045,PV+RSD,mix,6dFGS,velocity_density_correlation,two_point,likelihood,2207.03707,"MNRAS 518, 2436",src
+Dupuy2019,Dupuy et al.,2019,0.43,0.114,0.114,,unstated,0.05,PV,mix,CF3,correlation,two_point,chi2,1901.03530,,src
+Courtois2023_ungrouped,Courtois et al.,2023,0.38,0.04,0.04,,unstated,0.051,PV,mix,CF4 ungrouped,pairwise_radial_velocity_correlation,two_point,chi2,2211.16390,"A&A 670, L15",src
+Courtois2023_grouped,Courtois et al.,2023,0.36,0.05,0.05,,unstated,0.051,PV,mix,CF4 grouped,pairwise_radial_velocity_correlation,two_point,chi2,2211.16390,"A&A 670, L15",src
+Courtois2023_snia,Courtois et al.,2023,0.30,0.06,0.06,,unstated,0.051,PV,SN,CF4 SNIa subset,pairwise_radial_velocity_correlation,two_point,chi2,2211.16390,"A&A 670, L15",src
+Franco2026,Franco et al.,2026,0.344,0.105,0.105,,unstated,0.07,PV+RSD,mix,CF4++ (65331 distances),real_redshift_space_joint,two_point,chi2,2605.00450,,src
+DESI_DR1_maxlike,Lai et al. (DESI),2025,0.483,0.043,0.080,0.018,unstated,0.07,PV+RSD,TF+FP,DESI DR1 PV + BGS,maximum_likelihood_fields,field_level,likelihood,2512.03229,,src
+DESI_DR1_corrfunc,Turner et al. (DESI),2025,0.391,0.081,0.080,,unstated,0.07,PV+RSD,TF+FP,DESI DR1 PV + BGS,correlation_functions,two_point,likelihood,2512.03230,,src
+DESI_DR1_powerspec,Qin et al. (DESI),2025,0.440,0.096,0.080,,unstated,0.07,PV+RSD,TF+FP,DESI DR1 PV + BGS,power_spectrum,two_point,likelihood,2512.03231,,src
+DESI_DR1_consensus,DESI Collaboration,2025,0.4497,0.0548,0.0548,,unstated,0.07,PV+RSD,TF+FP,DESI DR1 PV + BGS,consensus_of_three,consensus,combination,2512.03230,,src
+Lai2023,Lai et al.,2023,0.405,0.071,0.076,0.009,unstated,0.073,PV+RSD,FP,SDSS PV,maximum_likelihood,field_level,mcmc,2209.04166,,src
+Lyall2024,Lyall et al.,2024,0.329,0.083,0.081,,unstated,0.073,PV+RSD,FP,6dFGS + SDSS,correlation,two_point,likelihood,2407.18684,,src
+Qin2024,Qin et al.,2024,0.413,0.058,0.050,,unstated,0.073,PV+RSD,FP,SDSS DR14 PV,density_momentum_cross_power_spectrum,two_point,likelihood,2411.09571,,src
+Feix2015,Feix et al.,2015,0.37,0.13,0.13,,unstated,0.1,PV,lum,SDSS DR7 (2e5 galaxies),luminosity_fluctuations,vd_linear,likelihood,1503.05945,"PRL 115, 011301",src
+Feix2017,Feix et al.,2017,0.48,0.16,0.16,,unstated,0.1,PV,lum,SDSS DR13,luminosity_fluctuations,vd_linear,likelihood,1612.07809,"MNRAS 468, 1420",src
+Stahl2021,Stahl et al.,2021,0.390,0.022,0.022,,lin,,PV,SN,DSS: 775 low-z SNe Ia+II vs 2M++,reconstruction,vd_linear,forward_likelihood,2105.05185,"MNRAS 505, 2349",src
+Stiskalek2026,Stiskalek,2026,0.412,0.018,0.018,,lin,,PV,TF+SN,2M++ (FP excluded),hierarchical_forward_model,vd_linear,hierarchical_bayes,2509.20235,MNRAS 2026,src
+Wang2026_group,Wang et al.,2026,0.384,0.194,0.116,,unstated,,PV,mix,CF4 groups,parallel_velocity_correlation,two_point,mcmc,2604.08314,,src
+Wang2026_local,Wang et al.,2026,0.569,0.060,0.054,,unstated,,PV,mix,CF4,local_growth_rate,two_point,mcmc,2604.08314,,src
+MaBranchiniScott2012,"Ma, Branchini & Scott",2012,0.42,0.033,0.033,,unstated,0.00,PV,mix,PSCz gravity field vs peculiar velocities,velocity_gravity_comparison,vd_linear,hierarchical_bayes,1205.4237,"MNRAS 425, 2880",src
+Nguyen2025,Nguyen et al.,2025,0.384,0.157,0.094,,unstated,0.03,PV,SN,SN magnitude fluctuations x galaxies,auto_cross_correlation,two_point,likelihood,2510.07673,,src

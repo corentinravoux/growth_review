@@ -1,0 +1,10 @@
+# BAO distance ratios, SDSS-family consensus values (MGS, BOSS DR12, eBOSS DR16).
+# Missing entries are written 0, not -1 (differs from bao_compilation.txt, which uses -1).
+# label  zeff  DV_over_rd  sig_DV  DM_over_rd  sig_DM  DH_over_rd  sig_DH
+MGS  0.15 4.493  0.169 0 0 0 0 
+BOSS 0.38 0 0  10.27 0.15 24.88 0.58 
+BOSS 0.51 0 0  13.38 0.18 22.43 0.48
+eBOSS_LRG 0.70 0 0 17.86 0.33 19.33 0.53
+eBOSS_ELG  0.85 18.33 0.58 0 0  0 0
+eBOSS_QSO 1.48 0 0 30.69 0.80 13.26 0.55
+LyaC 2.33 0 0 37.5 1.2 8.99 0.20

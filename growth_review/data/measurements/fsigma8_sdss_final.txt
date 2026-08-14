@@ -1,0 +1,10 @@
+# fsigma8 from the SDSS-family RSD analyses, as quoted in the SDSS final
+# cosmology paper (eBOSS Collaboration 2021, arXiv:2007.08991). Duplicates six
+# rows of fsigma8_rsd.txt under their original survey names -- do not plot both.
+# label  zmin  zmax  fsigma8  err
+MGS 0.07 0.2 0.53 0.19
+BOSS 0.2 0.5 0.497 0.045
+BOSS 0.4 0.6 0.459 0.038
+eBOSS_LRG 0.6 1.0 0.473 0.041
+eBOSS_ELG 0.6 1.1 0.286 0.093
+EBOSS_QSO 0.8 2.2 0.464 0.045
