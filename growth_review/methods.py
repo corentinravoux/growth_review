@@ -19,9 +19,9 @@ distinct compression regime, and it is the one Ravoux et al. (2025) is built on.
 FAMILY_LABEL = {
     "field_level":  "Field-level likelihood-based inference",
     "two_point":    "Two-point statistics",
-    "vd_linear":    "Velocity--density comparison (linear theory)",
+    "vd_linear":    "Velocity--density comparison",
     "vd_dynamical": "Velocity--density comparison (particle forward model)",
-    "consensus":    "Consensus of several estimators",
+    "consensus":    "Consensus of three estimators (DESI DR1)",
 }
 
 # Legend / caption order: increasing compression of the data, then the two

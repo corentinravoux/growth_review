@@ -22,9 +22,10 @@ from . import datasets as _ds
 # measurements; `frac_err` is a fractional (never percent) precision and only
 # filled for forecasts -- there is no central value to attach it to until a
 # fiducial cosmology is chosen, which is the plotting layer's job.
-TIDY_COLUMNS = ["key", "ref", "label", "z", "value", "err_lo", "err_hi",
-                "frac_err", "kind", "probe", "method", "dataset",
-                "method_family", "fit_technique", "sigma8_norm", "provenance"]
+TIDY_COLUMNS = ["key", "ref", "label", "survey", "year", "z", "value",
+                "err_lo", "err_hi", "frac_err", "kind", "probe", "method",
+                "dataset", "method_family", "fit_technique", "sigma8_norm",
+                "provenance"]
 
 
 # --------------------------------------------------------------------- raw I/O
@@ -110,6 +111,7 @@ def _tidy_pv(desi_estimators=False, drop_derived=False):
     out["key"] = df["key"].to_numpy()
     out["ref"] = df["authors"].to_numpy()
     out["label"] = df["dataset"].to_numpy()
+    out["year"] = df["year"].to_numpy()
     out["z"] = pd.to_numeric(df["z_eff"], errors="coerce").to_numpy()
     out["value"] = df["fsigma8"].to_numpy()
     # A separately-quoted systematic is added in quadrature; rows without one
@@ -139,6 +141,10 @@ def _tidy_rsd(drop_sdss_final=True):
     out["key"] = (df["ref"].astype(str) + "/" + df["label"].astype(str)).to_numpy()
     out["ref"] = df["ref"].to_numpy()
     out["label"] = df["label"].to_numpy()
+    # survey names carry underscores on disk so the file stays whitespace-
+    # delimited; they are only ever displayed with spaces
+    out["survey"] = df["survey"].astype(str).str.replace("_", " ").to_numpy()
+    out["year"] = df["year"].to_numpy()
     out["z"] = df["zeff"].to_numpy()
     out["value"] = df["fs8_value"].to_numpy()
     out["err_lo"] = df["fs8_error"].to_numpy()
@@ -230,7 +236,7 @@ def load_fsigma8(kind=None, method=None, require_z=True, desi_estimators=False,
         parts.append(fc)
 
     df = pd.concat(parts, ignore_index=True) if parts else _blank(0)
-    for c in ("z", "value", "err_lo", "err_hi", "frac_err"):
+    for c in ("z", "value", "err_lo", "err_hi", "frac_err", "year"):
         df[c] = pd.to_numeric(df[c], errors="coerce")
     if require_z:
         df = df[df["z"].notna()]

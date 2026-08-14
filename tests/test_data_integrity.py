@@ -207,28 +207,67 @@ def test_load_theory_rejects_an_untabulated_wavenumber():
 
 
 # --------------------------------------------------------------- citations
-def test_bibkey_and_uncited_lists_partition_the_pv_compilation():
-    keys = set(gr.load_raw("fsigma8_pv")["key"])
-    from growth_review.citations import PV_BIBKEY, PV_UNCITED
-    assert set(PV_BIBKEY) | set(PV_UNCITED) == keys
-    assert not set(PV_BIBKEY) & set(PV_UNCITED)
+# The package hardcodes no BibTeX keys, so these test the plumbing with a
+# synthetic mapping rather than a real bibliography.
+def _fake_bibkey(keys):
+    return {k: f"ref_{k.lower()}" for k in keys}
 
 
-def test_cited_only_figures_cite_every_point_they_plot():
+def test_captions_carry_no_citations_without_a_mapping():
     import matplotlib
     matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
     for fn in (gr.figures.fig_pv, gr.figures.fig_rsd, gr.figures.fig_overview):
-        fig, meta = fn(cited_only=True)
-        assert not meta["missing_citations"], (fn.__name__, meta["missing_citations"])
-        assert r"\cite{" in meta["caption"]
-        assert "[NO CITATION]" not in meta["caption"]
+        fig, meta = fn()
+        assert r"\cite{" not in meta["caption"], fn.__name__
+        assert not meta["missing_citations"]
+        plt.close(fig)
 
 
-def test_uncited_points_are_reported_not_silently_plotted():
+def test_a_full_mapping_cites_every_plotted_point():
     import matplotlib
     matplotlib.use("Agg")
-    _, meta = gr.figures.fig_pv(cited_only=False)
-    assert meta["missing_citations"], "the full compilation has uncited rows"
+    import matplotlib.pyplot as plt
+    for fn in (gr.figures.fig_pv, gr.figures.fig_rsd, gr.figures.fig_overview):
+        fig, meta = fn()
+        bib = _fake_bibkey(meta["plotted"]["key"])
+        plt.close(fig)
+        fig, meta = fn(bibkey=bib)
+        assert r"\cite{" in meta["caption"], fn.__name__
+        assert not meta["missing_citations"], (fn.__name__, meta["missing_citations"])
+        assert "[NO CITATION]" not in meta["caption"]
+        plt.close(fig)
+
+
+def test_a_partial_mapping_reports_the_uncitable_rows():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, meta = gr.figures.fig_pv()
+    keys = list(meta["plotted"]["key"])
+    plt.close(fig)
+    fig, meta = gr.figures.fig_pv(bibkey=_fake_bibkey(keys[:3]))
+    assert set(meta["missing_citations"]) == set(keys[3:])
+    plt.close(fig)
+
+
+def test_cited_only_drops_exactly_the_unmapped_rows():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, meta = gr.figures.fig_pv()
+    keys = list(meta["plotted"]["key"])
+    plt.close(fig)
+    fig, meta = gr.figures.fig_pv(bibkey=_fake_bibkey(keys[:3]), cited_only=True)
+    assert set(meta["plotted"]["key"]) == set(keys[:3])
+    assert set(meta["dropped"]) == set(keys[3:])
+    assert not meta["missing_citations"]
+    plt.close(fig)
+
+
+def test_cited_only_without_a_mapping_is_an_error():
+    with pytest.raises(ValueError, match="needs a bibkey mapping"):
+        gr.figures.fig_pv(cited_only=True)
 
 
 # ------------------------------------------------------------------ plotting

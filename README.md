@@ -41,21 +41,32 @@ gr.use_style()
 print(gr.summary_table())                     # the registry
 
 df = gr.load_fsigma8(kind="measurement")      # PV + RSD in one tidy schema
-fig, meta = gr.figures.fig_pv(cited_only=True)
-print(meta["caption"])                        # every plotted point cited
+fig, meta = gr.figures.fig_pv()
+print(meta["caption"])
 ```
 
 Build every figure:
 
 ```bash
-growth-review-figures --outdir figures                 # full compilation
-growth-review-figures --outdir figures --cited-only    # only what the HDR cites
+growth-review-figures --outdir figures
 growth-review-figures --only pv rsd --format png
 ```
 
-It exits non-zero if any plotted measurement could not be cited.
-
 `python -m growth_review` prints the registry.
+
+## Citations live outside the package
+
+BibTeX keys belong to a manuscript, not to a data compilation, so **none are
+hardcoded here**. Every `fig_*` takes an optional `bibkey` mapping
+(`{row key: "key1,key2"}`); with it the captions gain `\cite{...}` clauses and a
+`meta["missing_citations"]` audit, and `cited_only=True` restricts the panel to
+what the mapping covers.
+
+Section 10 of the notebook builds that mapping **by matching the compilation's
+`arxiv` column against a `.bib` file**, so it self-updates as the bibliography
+grows and cannot drift out of date. Only two things need a human: bib entries
+that carry no arXiv identifier, and duplicate entries sharing one — both are
+reported rather than guessed at.
 
 ## Layout
 
@@ -65,7 +76,6 @@ growth_review/
 ├── datasets.py    the registry: every file, its kind, probe, columns and caveats
 ├── io.py          readers, and the tidy fsigma8 view over all of them
 ├── methods.py     PV method taxonomy + the paper sentence behind each assignment
-├── citations.py   BibTeX keys and the caption builders
 ├── style.py       palette, reserved colours, and the redshift x-scales
 ├── plotting.py    primitives over the tidy schema
 ├── figures.py     the five composed figures + CLI
@@ -91,6 +101,14 @@ each figure picks one:
 - `log` — silently drops the six z = 0 rows. Never on a panel with PV data.
 
 Section 4 of the notebook plots the same data on all four.
+
+Points at nearly coincident redshifts are dodged horizontally. Two guards on
+that, because a dodge is a lie told for legibility and must not become a lie
+about the data: `floor=0` stops the six rows quoted at exactly z_eff = 0 from
+being spread to *negative* redshift, and `min_gap` enforces a separation
+between all neighbours rather than only within a tied block — without it two
+adjacent blocks can land a thousandth apart, invisible for markers and fatal
+for per-point labels. Every figure that dodges says so in its caption.
 
 ## Peculiar-velocity method families
 
@@ -125,6 +143,11 @@ The fitting technique (`forward_likelihood`, `forward_model`,
 `growth_review.methods.EVIDENCE` holds, for every row, the sentence in its own
 paper that fixes its family — `gr.evidence_report()` prints the audit.
 
+The PV figure labels every point with its source (`Author et al. Year`, rotated,
+on a common baseline above the tallest error bar). Sections 12 and 13 of the
+notebook print the matching caption citation lists and a full account of what
+the review leaves out.
+
 ## Caveats that travel with the data
 
 Each registry entry carries its own; the ones that bite most often:
@@ -145,6 +168,7 @@ Each registry entry carries its own; the ones that bite most often:
 The peculiar-velocity compilation was built by tracing every value to its own
 paper; no row is second-hand. Its header block documents all 18 columns and 12
 warnings, including six values where Turner (2024) Table 1 disagrees with the
-source. It is kept in sync with
-`~/.claude/skills/observational-cosmology/references/` (`pv-surveys.md`,
-`fsigma8-pv-compilation.md`).
+source. This package is the **only** copy: the mirror that used to sit in
+`~/.claude/skills/observational-cosmology/references/` was deleted on
+2026-08-14. The discussion companions (`pv-surveys.md`,
+`fsigma8-pv-compilation.md`) remain there and point here for the data.

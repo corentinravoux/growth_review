@@ -3,7 +3,7 @@
 # pv-surveys.md (surveys, systematics).
 #
 # FORMAT: CSV, comma-separated, fields quoted where they contain commas.
-#   pandas:  pd.read_csv("fsigma8_pv_data.txt", comment="#")
+#   pandas:  pd.read_csv("fsigma8_pv.csv", comment="#", dtype={"arxiv": str})
 #
 # COLUMNS
 #   key          short identifier, unique

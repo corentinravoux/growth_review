@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated figures -- rebuild with `growth-review-figures`
+figures/

@@ -104,7 +104,8 @@ def set_z_scale(ax, scale="linear", ticks=None, linthresh=0.1, linscale=1.0):
     ax.minorticks_off()
 
 
-def dodge_x(z, min_sep, step, scale="linear", linthresh=0.1):
+def dodge_x(z, min_sep, step, scale="linear", linthresh=0.1, floor=None,
+            min_gap=None):
     """Spread points sharing (nearly) the same redshift symmetrically about it.
 
     Returns shifted x values only -- the underlying z is unchanged, and the
@@ -112,6 +113,17 @@ def dodge_x(z, min_sep, step, scale="linear", linthresh=0.1):
     whatever coordinate the axis is linear in (z, log(1+z), or symlog's two
     branches), so the visual separation stays uniform across the panel instead
     of vanishing at one end.
+
+    `floor` shifts a whole block up rather than letting it cross that value.
+    Set floor=0 on any peculiar-velocity panel: six rows sit at exactly
+    z_eff = 0, and a symmetric spread would put half of them at negative
+    redshift -- a plotting artefact a reader will read as data.
+
+    `min_gap` then enforces a minimum separation between ALL neighbours, not
+    just within a tied block. The block pass alone leaves two adjacent blocks
+    free to end up a thousandth apart, which is invisible for markers and fatal
+    for per-point labels. The pass is monotone and left-to-right, so ordering is
+    preserved and nothing moves below `floor`.
     """
     z = np.asarray(z, dtype=float)
     out = z.copy()
@@ -135,7 +147,17 @@ def dodge_x(z, min_sep, step, scale="linear", linthresh=0.1):
                                                block * 10.0 ** offs)
             else:
                 out[order[i:j + 1]] = (1.0 + block) * 10.0 ** offs - 1.0
+            if floor is not None:
+                shift = floor - out[order[i:j + 1]].min()
+                if shift > 0:
+                    out[order[i:j + 1]] += shift
         i = j + 1
+
+    if min_gap:
+        for a, b in zip(np.argsort(out, kind="stable")[:-1],
+                        np.argsort(out, kind="stable")[1:]):
+            if out[b] - out[a] < min_gap:
+                out[b] = out[a] + min_gap
     return out
 
 

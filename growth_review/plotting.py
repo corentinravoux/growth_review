@@ -157,29 +157,57 @@ def plot_by_family(ax, df, cosmo=None, ms=7, x=None, **kw):
         plot_measurements(ax, cons, color=FAMILY_COLOR["consensus"],
                           marker=FAMILY_MARKER["consensus"], ms=ms * 2.4,
                           mfc=FAMILY_COLOR["consensus"], mew=1.0,
-                          label=f"{FAMILY_LABEL['consensus']} ({len(cons)})",
+                          label=FAMILY_LABEL["consensus"],
                           x=None if x is None else np.asarray(x, float)[(fam == "consensus").to_numpy()],
                           zorder=6)
         drawn.append("consensus")
     return drawn
 
 
-def plot_by_survey(ax, df, cmap_name="tab10", ms=6, annotate=False, x=None,
-                   fontsize=8, **kw):
-    """One colour and legend entry per `ref` (survey / first author).
+# Collaboration names that appear in the `ref` column in place of a first
+# author. A survey led by one of these has many companion papers, so its legend
+# entry gets no "(Author et al. Year)" -- there is no single article to name.
+COLLABORATIONS = {"eBOSS", "SDSS", "DESI-Y1", "DESI"}
 
-    tab10 index 3 (red) is skipped: red is reserved for DESI everywhere, and a
-    survey sharing that hue makes the DESI points ambiguous.
+
+def survey_legend_label(sub):
+    """Legend text for one survey group: "SURVEY (Author et al. Year)".
+
+    The parenthetical is added only when the group really is one article -- a
+    single non-collaboration first author and a single year. eBOSS DR16 and
+    DESI DR1 each have two companion papers per tracer, so they are named by
+    survey alone rather than by an arbitrary one of them.
     """
+    survey = str(sub["survey"].iloc[0])
+    refs, years = set(sub["ref"].astype(str)), set(sub["year"].dropna())
+    if len(refs) == 1 and len(years) == 1 and not (refs & COLLABORATIONS):
+        return f"{survey} ({refs.pop()} et al. {int(years.pop())})"
+    return survey
+
+
+# tab20 slots, all eight saturated shades first and only then the pale ones.
+# Taking tab20 in its natural order alternates dark/light of the SAME hue, so
+# consecutive legend entries came out as two blues and two oranges. Reds (6, 7)
+# are excluded because red is reserved for DESI in every panel, and greys
+# (14, 15) because grey means "de-emphasised" elsewhere in the package. tab10
+# alone was one hue short: the RSD compilation has ten pre-DESI surveys.
+_SURVEY_SLOTS = [0, 2, 4, 8, 10, 12, 16, 18, 1, 3, 5, 9, 11, 13, 17, 19]
+
+
+def plot_by_survey(ax, df, cmap_name="tab20", ms=6, annotate=False, x=None,
+                   fontsize=8, by="survey", **kw):
+    """One colour and legend entry per survey, labelled "SURVEY (Article)"."""
     import matplotlib.pyplot as plt
-    refs = list(dict.fromkeys(df["ref"]))
+    groups = list(dict.fromkeys(df[by]))
     cmap = plt.get_cmap(cmap_name)
-    slots = [i for i in range(cmap.N) if i != 3]
-    color_map = {r: (DESI_COLOR if str(r).startswith("DESI")
+    slots = _SURVEY_SLOTS
+    color_map = {g: (DESI_COLOR if str(g).startswith("DESI")
                      else cmap(slots[i % len(slots)]))
-                 for i, r in enumerate(refs)}
-    drawn = plot_grouped(ax, df, by="ref", color_map=color_map,
-                         marker_map={r: "o" for r in refs}, order=refs,
+                 for i, g in enumerate(groups)}
+    label_map = {g: survey_legend_label(df[df[by] == g]) for g in groups}
+    drawn = plot_grouped(ax, df, by=by, color_map=color_map,
+                         marker_map={g: "o" for g in groups},
+                         label_map=label_map, order=groups,
                          ms=ms, count_in_label=False, x=x, **kw)
     if annotate:
         xs = df["z"].to_numpy() if x is None else np.asarray(x, float)
@@ -191,8 +219,51 @@ def plot_by_survey(ax, df, cmap_name="tab10", ms=6, annotate=False, x=None,
     return drawn
 
 
+def annotate_provenance(ax, df, x=None, rotation=90, fontsize=6.5, pad=4,
+                        color="0.25", baseline=None):
+    """Rotated "Author et al. Year" above every point, on a common baseline.
+
+    All labels start at the same height -- just above the tallest error bar --
+    rather than each above its own. Following the individual bars looks tidier
+    on paper but guarantees collisions wherever the points are dense and the
+    bars are of different lengths, because a long label from a short bar runs
+    up through its neighbours. On a common baseline the only separation that
+    matters is horizontal, which the dodge already provides.
+
+    Returns the baseline in data units; `required_top` turns that into an ylim.
+    """
+    xs = df["z"].to_numpy() if x is None else np.asarray(x, float)
+    if baseline is None:
+        baseline = float(np.nanmax(df["value"] + df["err_hi"]))
+    for n, (_, row) in enumerate(df.iterrows()):
+        year = "" if pd.isna(row["year"]) else f" {int(row['year'])}"
+        ax.annotate(f"{row['ref']}{year}", (xs[n], baseline),
+                    textcoords="offset points", xytext=(0, pad),
+                    rotation=rotation, rotation_mode="anchor",
+                    fontsize=fontsize, color=color, ha="left", va="center")
+    return baseline
+
+
+def required_top(fig, df, baseline, bottom, fontsize=6.5, pad=4, frac=0.78):
+    """Upper ylim that leaves room for the rotated labels above `baseline`.
+
+    The labels are drawn in points and the axis in data units, so the two are
+    coupled: making room changes the scale, which changes how much room is
+    needed. Solving that fixed point in closed form beats guessing an ylim and
+    finding the longest name clipped at the top of the page.
+    """
+    chars = max((len(f"{r['ref']} {r['year']}") for _, r in df.iterrows()),
+                default=0)
+    extent = chars * fontsize * 0.62 + pad          # points, rotated text
+    height_pt = fig.get_size_inches()[1] * frac * 72.0
+    if extent >= height_pt:                          # pathological, give up
+        return baseline + (baseline - bottom)
+    return (baseline * height_pt - extent * bottom) / (height_pt - extent)
+
+
 def annotate_points(ax, df, x=None, offsets=None, color="0.3", fontsize=8.5):
-    """Direct labels from the `label` column; `offsets` overrides per label."""
+    """Direct horizontal labels from the `label` column; `offsets` overrides
+    the (dx, dy) point offset per label value."""
     offsets = offsets or {}
     xs = df["z"].to_numpy() if x is None else np.asarray(x, float)
     for n, (_, row) in enumerate(df.iterrows()):
