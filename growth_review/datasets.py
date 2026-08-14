@@ -58,7 +58,7 @@ def _ds(name, kind, probe, relpath, fmt, summary, source, **kw):
 DATASETS = {d.name: d for d in [
     # ------------------------------------------------------------ measurements
     _ds("fsigma8_pv", "measurement", "fsigma8", "measurements/fsigma8_pv.csv", "csv",
-        "35 published fsigma8 values from peculiar-velocity data, one row per "
+        "36 published fsigma8 values from peculiar-velocity data, one row per "
         "measurement, with asymmetric errors, method family and full provenance.",
         "compiled 2026-08-13/14; every row traced to its own paper",
         method="pv",

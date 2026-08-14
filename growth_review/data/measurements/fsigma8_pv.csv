@@ -27,10 +27,19 @@
 #                  Wang2026_* -- the analysis is framed in survey depth (h^-1 Mpc).
 #                Stiskalek's Fig. 4 plots literature points at sample mean redshifts he
 #                computes himself; those are his assignments, not the original authors'.
-#   probe        PV     = the peculiar velocity field is measured directly, whether
-#                         from a distance indicator (TF/FP/SNe) or from the
-#                         correlated magnitude scatter it induces (Feix, Nguyen)
-#                PV+RSD = velocities combined with a redshift-survey density field
+#   probe        Whether the analysis MODELS THE GALAXY CLUSTERING as well as the
+#                velocities. Corrected 2026-08-14: the old wording said PV+RSD meant
+#                "velocities combined with a redshift-survey density field", which
+#                does not match how the column is filled and would have moved all
+#                twelve velocity-density rows.
+#                PV     = only the velocity field enters the statistic being fitted,
+#                         whether measured from a distance indicator (TF/FP/SNe) or
+#                         from the correlated magnitude scatter it induces (Feix,
+#                         Nguyen). A row may still USE an external density field to
+#                         predict velocities -- that is method_family=vd_linear, a
+#                         different question. See WARNING 15.
+#                PV+RSD = the galaxy density field's own clustering / redshift-space
+#                         distortions are modelled jointly with the velocities.
 #   indicator    TF | FP | SN | TF+FP | SN+TF | TF+SN | mix | lum
 #                mix = heterogeneous compilation (Cosmicflows-like)
 #                lum = galaxy luminosity fluctuations, not a direct distance indicator
@@ -87,10 +96,12 @@
 #     are NOT in this file; they are discussed in fsigma8-pv-compilation.md section 2.
 #  6. Dupuy2019 errors are the observational (0.03) and cosmic-variance (0.11) terms
 #     combined in quadrature; the authors quote them separately.
-#  7. provenance=der rows are CIRCULAR if used to test gravity. Carrick2015 measures
-#     Omega_m^0.55*sigma8, Nusser2017 quotes an interval on the same combination, and
-#     Davis2011's value follows from beta. Identifying these with fsigma8 assumes
-#     f = Omega_m^0.55, i.e. assumes GR. Exclude them from any growth-index fit.
+#  7. provenance=der rows are CIRCULAR if used to test gravity. Carrick2015 and
+#     Turnbull2012 measure Omega_m^0.55*sigma8, Nusser2017 quotes an interval on the
+#     same combination, and Davis2011's value follows from beta. Identifying these
+#     with fsigma8 assumes f = Omega_m^0.55, i.e. assumes GR. Exclude them from any
+#     growth-index fit. (Turnbull et al. make the identification explicitly, comparing
+#     their 0.40 +/- 0.07 with "WMAP7: fsigma8,lin = 0.39 +/- 0.04".)
 #  8. SIX values in Turner (2024) Table 1 disagree with the source: Said2020,
 #     Boubel2024, Dupuy2019, Turner2023, Beutler2012 (0.423+/-0.055 not 0.428
 #     +0.079/-0.068) and Johnson2014 (error 0.065 not 0.055).
@@ -105,8 +116,9 @@
 #         Blake, Carter & Koda 2018     0.38 +/- 0.12   1801.04969
 #
 #
-# 10. LINEAR vs NON-LINEAR sigma8. Six rows report fsigma8_lin: Carrick2015,
-#     LilowNusser2021, HollingerHudson2024, Boruah2020, Stahl2021, Stiskalek2026.
+# 10. LINEAR vs NON-LINEAR sigma8. Seven rows report fsigma8_lin: Carrick2015,
+#     Turnbull2012, LilowNusser2021, HollingerHudson2024, Boruah2020, Stahl2021,
+#     Stiskalek2026.
 #     All six are velocity-density comparison / reconstruction analyses, which
 #     predict the velocity field from linear theory and so naturally constrain the
 #     linear normalisation. The offset is NOT negligible: Carrick et al. quote both
@@ -134,6 +146,20 @@
 #     Stahl2021 refer to forward-modelling the DISTANCE INDICATOR (Tully-Fisher scatter,
 #     Malmquist bias), not the dynamics of the density field. Do not read them as
 #     non-linear.
+#
+# 14. PIKE & HUDSON 2005 IS NOT A ROW, though it is a peculiar-velocity growth
+#     measurement. It reports beta_K = 0.49 +/- 0.04 and sigma8*(Om/0.3)^0.6 =
+#     0.91 +/- 0.12 (2MASS alone) or 0.85 +/- 0.05 (with IRAS) -- an Om exponent of
+#     0.6, normalised by 0.3. Turning that into fsigma8 needs BOTH a value of Om
+#     and the GR growth index, one assumption more than the der rows already carry.
+#     No such conversion is published, so no number is entered. Cited in the HDR
+#     text as the first SN-based measurement (59 SNe).
+#
+# 15. "USES A DENSITY FIELD" IS NOT THE probe COLUMN. Every method_family=vd_linear
+#     row predicts velocities from an external redshift survey (2M++, 2MRS, PSCz,
+#     CF3+2MRS) while being labelled probe=PV, because the density field is an
+#     input rather than part of the fitted statistic. The set of analyses that use
+#     a density field at all is (method_family == "vd_linear") | (probe == "PV+RSD").
 #
 key,authors,year,fsigma8,err_lo,err_hi,err_sys,sigma8_norm,z_eff,probe,indicator,dataset,estimator,method_family,fit_technique,arxiv,journal,provenance
 Johnson2014,Johnson et al.,2014,0.418,0.065,0.065,,unstated,0.00,PV,FP,6dFGSv,maximum_likelihood,field_level,likelihood,1404.3799,"MNRAS 444, 3926",src
@@ -171,3 +197,4 @@ Wang2026_group,Wang et al.,2026,0.384,0.194,0.116,,unstated,,PV,mix,CF4 groups,p
 Wang2026_local,Wang et al.,2026,0.569,0.060,0.054,,unstated,,PV,mix,CF4,local_growth_rate,two_point,mcmc,2604.08314,,src
 MaBranchiniScott2012,"Ma, Branchini & Scott",2012,0.42,0.033,0.033,,unstated,0.00,PV,mix,PSCz gravity field vs peculiar velocities,velocity_gravity_comparison,vd_linear,hierarchical_bayes,1205.4237,"MNRAS 425, 2880",src
 Nguyen2025,Nguyen et al.,2025,0.384,0.157,0.094,,unstated,0.03,PV,SN,SN magnitude fluctuations x galaxies,auto_cross_correlation,two_point,likelihood,2510.07673,,src
+Turnbull2012,Turnbull et al.,2012,0.40,0.07,0.07,,lin,,PV,SN,"A1 (245 SNe) vs PSCz",reconstruction_Om055sigma8,vd_linear,chi2,1111.0631,"MNRAS 420, 447",der

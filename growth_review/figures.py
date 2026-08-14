@@ -24,13 +24,29 @@ from . import io
 from .cosmology import FlatLCDM
 from .methods import FAMILY_LABEL, FAMILY_ORDER
 from .plotting import (annotate_points, annotate_provenance,
-                       plot_by_family, plot_by_survey, required_top,
+                       fit_ylim_to_labels, plot_by_family, plot_by_survey,
                        plot_forecasts, plot_measurements, plot_reference,
                        plot_theory, residual_panel)
 from .style import DESI_COLOR, PALETTE, dodge_x, style_axes, use_style
 
-DESI_RSD_OFFSETS = {"LRG1": (-4, 12), "LRG2": (0, 12), "LRG3": (7, 12),
-                    "ELG2": (0, -18), "QSO": (0, 12), "BGS": (0, -18)}
+# Per-tracer nudges for the DESI labels, in points. LRG2 and QSO sit almost on
+# top of an eBOSS DR16 point, so they are pushed sideways rather than up.
+DESI_RSD_OFFSETS = {"LRG1": (-4, 12), "LRG2": (-6, 14), "LRG3": (7, 12),
+                    "ELG2": (0, -18), "QSO": (20, 4), "BGS": (0, -18)}
+
+# Surveys the RSD panel leaves out by default. The compilation keeps them all --
+# this is a figure decision, reversible with exclude_surveys=().
+#
+# The SDSS family contributed four generations of RSD measurement (MGS, BOSS
+# DR12, eBOSS DR14, eBOSS DR16). Plotting all four buries the point the figure
+# is making: showing only the first and the last makes the twenty-year gain in
+# precision legible at a glance instead of turning that stretch of the panel
+# into a thicket.
+RSD_EXCLUDED_SURVEYS = (
+    "BOSS DR12",       # intermediate SDSS-family release
+    "eBOSS DR14 QSO",  # intermediate SDSS-family release
+    "eBOSS DR14 LRG",  # intermediate SDSS-family release
+)
 
 
 # ------------------------------------------------------- citation plumbing
@@ -159,15 +175,20 @@ def fig_overview(cosmo=None, bibkey=None, cited_only=False, scale="symlog"):
 
 
 # ------------------------------------------------------------------- figure 2
-def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear"):
+def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear",
+            exclude_surveys=RSD_EXCLUDED_SURVEYS):
     """Galaxy-clustering fsigma8: one colour per survey, DESI DR1 in red."""
     cosmo = cosmo or FlatLCDM()
-    df, dropped = _restrict(io.load_fsigma8(kind="measurement", method="rsd"),
+    # Survey exclusion first, citation filter second, so `dropped` reports only
+    # rows that were wanted on the panel and could not be cited.
+    df = io.load_fsigma8(kind="measurement", method="rsd")
+    excluded = sorted(set(df.loc[df["survey"].isin(exclude_surveys), "key"]))
+    df, dropped = _restrict(df[~df["survey"].isin(exclude_surveys)].copy(),
                             bibkey, cited_only)
     is_desi = df["ref"].astype(str).str.startswith("DESI")
     pre, desi = df[~is_desi], df[is_desi]
 
-    fig, ax = plt.subplots(figsize=(10.5, 5.8))
+    fig, ax = plt.subplots(figsize=(10.5, 6.4))
     plot_reference(ax, cosmo, zmax=1.65)
     xpre = dodge_x(pre["z"].to_numpy(), min_sep=0.035, step=0.028, scale=scale)
     # No per-point labels on the pre-DESI set: 19 points in 1.5 units of z means
@@ -179,9 +200,11 @@ def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear"):
                       label="DESI DR1 (full shape)", zorder=5)
     annotate_points(ax, desi, offsets=DESI_RSD_OFFSETS, color=DESI_COLOR)
 
-    style_axes(ax, xlim=(-0.02, 1.64), ylim=(0.20, 0.70), scale=scale,
-               legend_kw=dict(loc="upper left", bbox_to_anchor=(1.01, 1.02),
-                              fontsize=9, ncol=1, handletextpad=0.5))
+    # Top raised so the two-column legend sits above every error bar instead of
+    # over the SDSS MGS one, whose 0.19 uncertainty reaches 0.72.
+    style_axes(ax, xlim=(-0.02, 1.64), ylim=(0.20, 0.85), scale=scale,
+               legend_kw=dict(loc="upper right", fontsize=13, ncol=2,
+                              handletextpad=0.5, columnspacing=1.1))
     fig.tight_layout()
 
     caption = (
@@ -189,8 +212,11 @@ def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear"):
         r"(redshift-space distortions), compared with the $\Lambda$CDM "
         r"prediction for a Planck~2018 fiducial cosmology (black line). Points "
         r"are coloured by survey; DESI~DR1 full-shape results are shown in red "
-        r"and labelled by tracer sample. Points at nearly coincident redshifts "
-        r"are displaced horizontally for legibility{CITE}.}")
+        r"and labelled by tracer sample. Of the SDSS-family measurements only "
+        r"the first (SDSS~MGS) and the last (eBOSS~DR16) are shown, so that the "
+        r"gain in precision over two decades stays legible. Points at nearly "
+        r"coincident redshifts are displaced horizontally for legibility"
+        r"{CITE}.}")
     missing = []
     if bibkey is not None:
         cite, missing = _cite_rows(df.sort_values("z"), bibkey)
@@ -199,7 +225,7 @@ def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear"):
         caption = caption.replace("{CITE}", "")
 
     return fig, dict(caption=caption, missing_citations=missing, dropped=dropped,
-                     plotted=df, n=len(df))
+                     excluded_surveys=excluded, plotted=df, n=len(df))
 
 
 # ------------------------------------------------------------------- figure 3
@@ -223,21 +249,29 @@ def fig_pv(cosmo=None, bibkey=None, cited_only=False, scale="linear",
     # put half of them at negative redshift -- an artefact a reader takes for data
     # min_gap keeps the rotated per-point labels from overlapping: at 6 pt a
     # rotated line is ~7 pt wide, which is ~0.0015 in z on this panel.
+    # min_gap keeps the rotated per-point labels from overlapping: at 7.5 pt a
+    # rotated line is ~9 pt wide, which is ~0.0019 in z on this panel.
+    # min_gap keeps the rotated per-point labels from overlapping: at 9 pt a
+    # rotated line is ~11 pt wide, which is ~0.0023 in z on this panel.
     x = dodge_x(df["z"].to_numpy(), min_sep=0.005, step=0.0022, scale=scale,
-                floor=0.0, min_gap=0.0016 if provenance else None)
+                floor=0.0, min_gap=0.0023 if provenance else None)
     zmax = float(np.nanmax(df["z"])) if len(df) else 0.08
 
-    bottom = 0.20
+    # Low enough that the two-column legend sits under every error bar rather
+    # than over one: the lowest whisker reaches 0.239, and a three-row legend at
+    # this font is ~0.07 tall in data units.
+    bottom = 0.12
     fig, ax = plt.subplots(figsize=(11, 7))
     plot_reference(ax, cosmo, zmax=zmax * 1.15)
     plot_by_family(ax, df, x=x, ms=7.5)
+    texts = anchors = None
     if provenance:
-        base = annotate_provenance(ax, df, x=x, fontsize=6.0)
-        top = required_top(fig, df, base, bottom, fontsize=6.0)
-    else:
-        top = 0.74
-    style_axes(ax, xlim=(-0.004, zmax * 1.22), ylim=(bottom, top), scale=scale,
-               legend_kw=dict(loc="lower left", fontsize=9.5, ncol=2))
+        texts, anchors = annotate_provenance(ax, df, x=x)
+    style_axes(ax, xlim=(-0.004, zmax * 1.22), ylim=(bottom, 0.74), scale=scale,
+               legend_kw=dict(loc="lower left", fontsize=13, ncol=2))
+    if provenance:
+        # measured with the real renderer, not estimated -- see the docstring
+        fit_ylim_to_labels(ax, texts, anchors, bottom)
     fig.tight_layout()
 
     caption = (

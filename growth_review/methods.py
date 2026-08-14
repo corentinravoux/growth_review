@@ -133,6 +133,9 @@ EVIDENCE = {
 
     "Carrick2015": "'We compare the predicted peculiar velocities from 2M++ to "
                    "Tully-Fisher and SNe peculiar velocities'",
+    "Turnbull2012": "'We have compared the peculiar velocities to the predictions "
+                    "from the IRAS PSCz and have found Om^0.55 sigma8,lin of "
+                    "0.40 +/- 0.07'",
     "Boruah2020": "'a simple chi2 minimization technique and a forward likelihood "
                   "method'",
     "Said2020": "'by comparing observed Fundamental Plane peculiar velocities ... "

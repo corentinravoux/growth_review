@@ -119,7 +119,7 @@ not by what optimiser it runs afterwards:
 |---|---|---|
 | `field_level` | the likelihood of the observed field values is written through a model covariance and maximised or sampled; no summary statistic first | 6 |
 | `two_point` | a correlation function, power spectrum or momentum spectrum is measured, then fitted | 16 |
-| `vd_linear` | the velocity field is predicted from a redshift-survey density field by **linear theory** — directly, or through a Wiener filter / constrained realisation, which is still linear dynamics — and compared with the measured velocities | 12 |
+| `vd_linear` | the velocity field is predicted from a redshift-survey density field by **linear theory** — directly, or through a Wiener filter / constrained realisation, which is still linear dynamics — and compared with the measured velocities | 13 |
 | `vd_dynamical` | the same comparison, but the field is evolved from initial conditions by a **gravity solver on a particle field** (LPT, COLA, particle-mesh, N-body), reaching the mildly non-linear regime | **0** |
 | `consensus` | correlated combination of several of the above (DESI DR1) | 1 |
 
@@ -156,17 +156,21 @@ Each registry entry carries its own; the ones that bite most often:
   recur across most of them, and CF3/CF4 *contain* several. Never average.
 - The four `DESI_DR1_*` rows are three correlated estimators on one dataset plus
   their consensus. `load_fsigma8` keeps only the consensus unless asked.
-- Six PV rows normalise to the **linear** σ₈. Carrick et al. quote both for the
+- Seven PV rows normalise to the **linear** σ₈. Carrick et al. quote both for the
   same data: 0.401 ± 0.024 linear vs 0.427 ± 0.026, a 6.5% offset — larger than
   several error bars in the table.
-- Three rows (`provenance='der'`) never quote fσ₈ at all; calling their result
+- Four rows (`provenance='der'`) never quote fσ₈ at all; calling their result
   fσ₈ assumes f = Ωₘ^0.55, i.e. assumes GR. Pass `drop_derived=True` for any
   growth-index or modified-gravity fit.
+- The `probe` column marks whether the galaxy **clustering** is modelled too, not
+  whether a density field is used. Every `vd_linear` row uses one (2M++, 2MRS,
+  PSCz) while being labelled `PV`, because there the density field is an input
+  rather than part of the fitted statistic.
 
 ## Provenance
 
 The peculiar-velocity compilation was built by tracing every value to its own
-paper; no row is second-hand. Its header block documents all 18 columns and 12
+paper; no row is second-hand. Its header block documents all 18 columns and 15
 warnings, including six values where Turner (2024) Table 1 disagrees with the
 source. This package is the **only** copy: the mirror that used to sit in
 `~/.claude/skills/observational-cosmology/references/` was deleted on

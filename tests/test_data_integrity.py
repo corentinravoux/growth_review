@@ -46,7 +46,7 @@ def pv():
 
 
 def test_pv_row_count_and_unique_keys(pv):
-    assert len(pv) == 35
+    assert len(pv) == 36
     assert pv["key"].is_unique
 
 
@@ -113,13 +113,13 @@ def test_derived_rows_are_the_documented_three(pv):
     # Warning 7 of the file header: these assume f = Om^0.55 and are circular
     # in a test of gravity. If the set changes, the warning must change too.
     assert set(pv.loc[pv["provenance"] == "der", "key"]) == {
-        "Carrick2015", "Davis2011", "Nusser2017"}
+        "Carrick2015", "Davis2011", "Nusser2017", "Turnbull2012"}
 
 
-def test_linear_sigma8_rows_are_the_documented_six(pv):
+def test_linear_sigma8_rows_are_the_documented_seven(pv):
     assert set(pv.loc[pv["sigma8_norm"] == "lin", "key"]) == {
-        "Carrick2015", "LilowNusser2021", "HollingerHudson2024", "Boruah2020",
-        "Stahl2021", "Stiskalek2026"}
+        "Carrick2015", "Turnbull2012", "LilowNusser2021", "HollingerHudson2024",
+        "Boruah2020", "Stahl2021", "Stiskalek2026"}
 
 
 # ------------------------------------------------------------- the tidy view
@@ -155,9 +155,32 @@ def test_sdss_final_duplicates_are_dropped_by_default():
     assert len(df) == 25
 
 
-def test_rows_without_z_are_the_documented_four():
+def test_rsd_figure_excludes_the_intermediate_sdss_releases():
+    """The panel shows the SDSS progression by its endpoints only."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, meta = gr.figures.fig_rsd()
+    plt.close(fig)
+    assert set(meta["excluded_surveys"]) == {
+        "Alam/BOSS_DR12", "Zarrouk/DR14_QSO", "Icaza-Lizaola/DR14_LRG"}
+    surveys = set(meta["plotted"]["survey"])
+    assert {"SDSS MGS", "eBOSS DR16"} <= surveys      # first and last
+    assert not surveys & {"BOSS DR12", "eBOSS DR14 QSO", "eBOSS DR14 LRG"}
+    # the compilation itself is untouched -- this is a figure decision
+    fig, meta = gr.figures.fig_rsd(exclude_surveys=())
+    plt.close(fig)
+    assert len(meta["plotted"]) == 25
+
+
+def test_rows_without_z_are_the_documented_five():
+    """Five rows whose authors assign no effective redshift, verified in each
+    paper: Stiskalek's Table 1 prints "-" for the joint row, while Stahl,
+    Turnbull and Wang localise their samples by characteristic depth instead
+    (58 and ~30 h^-1 Mpc; CF4's depth differs twofold between hemispheres)."""
     assert set(gr.io.dropped_without_z()["key"]) == {
-        "Stahl2021", "Stiskalek2026", "Wang2026_group", "Wang2026_local"}
+        "Stahl2021", "Stiskalek2026", "Turnbull2012",
+        "Wang2026_group", "Wang2026_local"}
 
 
 def test_systematics_are_added_in_quadrature():
@@ -174,6 +197,7 @@ def test_drop_derived_removes_exactly_the_circular_rows():
     dropped = keep - set(gr.load_fsigma8(kind="measurement", method="pv",
                                          drop_derived=True)["key"])
     assert dropped == {"Carrick2015", "Davis2011", "Nusser2017"}
+    # Turnbull2012 is also 'der' but has no z_eff, so it never reaches the frame
 
 
 # --------------------------------------------------------------- cosmology

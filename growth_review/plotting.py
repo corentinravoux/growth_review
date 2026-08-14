@@ -191,7 +191,9 @@ def survey_legend_label(sub):
 # are excluded because red is reserved for DESI in every panel, and greys
 # (14, 15) because grey means "de-emphasised" elsewhere in the package. tab10
 # alone was one hue short: the RSD compilation has ten pre-DESI surveys.
-_SURVEY_SLOTS = [0, 2, 4, 8, 10, 12, 16, 18, 1, 3, 5, 9, 11, 13, 17, 19]
+# Pink (12) is held back behind olive and cyan: it is the one tab20 hue close
+# enough to DESI's red in lightness to be mistaken for it at a glance.
+_SURVEY_SLOTS = [0, 2, 4, 8, 10, 18, 16, 12, 1, 3, 5, 9, 11, 13, 17, 19]
 
 
 def plot_by_survey(ax, df, cmap_name="tab20", ms=6, annotate=False, x=None,
@@ -219,46 +221,66 @@ def plot_by_survey(ax, df, cmap_name="tab20", ms=6, annotate=False, x=None,
     return drawn
 
 
-def annotate_provenance(ax, df, x=None, rotation=90, fontsize=6.5, pad=4,
-                        color="0.25", baseline=None):
-    """Rotated "Author et al. Year" above every point, on a common baseline.
+def annotate_provenance(ax, df, x=None, rotation=90, fontsize=9.0, pad=5,
+                        color="0.25", baseline=None, quantile=0.72):
+    """Rotated "Author et al. Year" above every point, on a shared baseline.
 
-    All labels start at the same height -- just above the tallest error bar --
-    rather than each above its own. Following the individual bars looks tidier
-    on paper but guarantees collisions wherever the points are dense and the
-    bars are of different lengths, because a long label from a short bar runs
-    up through its neighbours. On a common baseline the only separation that
-    matters is horizontal, which the dodge already provides.
+    The baseline sits at the `quantile`-th percentile of the error-bar tops
+    rather than above the tallest of them: anchoring on the maximum pushes every
+    label to the top of the panel because of two or three outliers, leaving a
+    band of white space no reader benefits from. The few points whose bars reach
+    past the baseline lift their own label clear of it, so nothing is written
+    over a measurement.
 
-    Returns the baseline in data units; `required_top` turns that into an ylim.
+    All the rest share one height, which is what stops long names from running
+    up through their neighbours. Horizontal separation is the dodge's job --
+    pass `min_gap` to `dodge_x` sized for this `fontsize`.
+
+    Returns (texts, anchors) for `fit_ylim_to_labels`.
     """
     xs = df["z"].to_numpy() if x is None else np.asarray(x, float)
+    tops = (df["value"] + df["err_hi"]).to_numpy()
     if baseline is None:
-        baseline = float(np.nanmax(df["value"] + df["err_hi"]))
+        baseline = float(np.nanquantile(tops, quantile))
+    ys = np.maximum(baseline, tops)
+    texts = []
     for n, (_, row) in enumerate(df.iterrows()):
         year = "" if pd.isna(row["year"]) else f" {int(row['year'])}"
-        ax.annotate(f"{row['ref']}{year}", (xs[n], baseline),
-                    textcoords="offset points", xytext=(0, pad),
-                    rotation=rotation, rotation_mode="anchor",
-                    fontsize=fontsize, color=color, ha="left", va="center")
-    return baseline
+        texts.append(ax.annotate(
+            f"{row['ref']}{year}", (xs[n], ys[n]),
+            textcoords="offset points", xytext=(0, pad),
+            rotation=rotation, rotation_mode="anchor",
+            fontsize=fontsize, color=color, ha="left", va="center"))
+    return texts, ys
 
 
-def required_top(fig, df, baseline, bottom, fontsize=6.5, pad=4, frac=0.78):
-    """Upper ylim that leaves room for the rotated labels above `baseline`.
+def fit_ylim_to_labels(ax, texts, anchors, bottom, pad_px=3.0):
+    """Set the smallest upper ylim that still fits every rotated label.
 
-    The labels are drawn in points and the axis in data units, so the two are
-    coupled: making room changes the scale, which changes how much room is
-    needed. Solving that fixed point in closed form beats guessing an ylim and
-    finding the longest name clipped at the top of the page.
+    Labels live in pixels and the axis in data units, and the two are coupled:
+    raising the limit to make room also lowers every anchor, which frees room
+    again. Estimating that with a nominal axes height and the longest string
+    over-reserves badly -- the longest name is rarely the one sitting highest,
+    so the panel ends up with a band of white space at the top.
+
+    Here the text is measured once with the real renderer, then the fixed point
+    is solved per label. For anchor A_i needing E_i pixels above itself in an
+    axes H pixels tall, the limit must satisfy
+    T >= bottom + (A_i - bottom) * H / (H - E_i); the answer is the largest.
     """
-    chars = max((len(f"{r['ref']} {r['year']}") for _, r in df.iterrows()),
-                default=0)
-    extent = chars * fontsize * 0.62 + pad          # points, rotated text
-    height_pt = fig.get_size_inches()[1] * frac * 72.0
-    if extent >= height_pt:                          # pathological, give up
-        return baseline + (baseline - bottom)
-    return (baseline * height_pt - extent * bottom) / (height_pt - extent)
+    fig = ax.figure
+    fig.canvas.draw()
+    height = ax.get_window_extent().height
+    top = ax.get_ylim()[1]
+    need = bottom
+    for text, anchor in zip(texts, anchors):
+        anchor_px = ax.transData.transform((0.0, anchor))[1]
+        extent = text.get_window_extent().y1 - anchor_px + pad_px
+        if extent >= height:                       # cannot fit; leave as is
+            return top
+        need = max(need, bottom + (anchor - bottom) * height / (height - extent))
+    ax.set_ylim(bottom, need)
+    return need
 
 
 def annotate_points(ax, df, x=None, offsets=None, color="0.3", fontsize=8.5):
@@ -314,6 +336,4 @@ def residual_panel(ax, df, cosmo, by=None, color_map=None, marker_map=None,
     ax.axhline(0.0, color="k", lw=1.3, zorder=1)
     ax.grid(alpha=0.3, lw=0.7, color="0.7", ls=":")
     ax.set_axisbelow(True)
-    for spine in ("top", "right"):
-        ax.spines[spine].set_visible(False)
     return ax

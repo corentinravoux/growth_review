@@ -163,19 +163,26 @@ def dodge_x(z, min_sep, step, scale="linear", linthresh=0.1, floor=None,
 
 def style_axes(ax, xlabel="Redshift $z$", ylabel=r"$f\sigma_8(z)$",
                xlim=None, ylim=None, title=None, legend_kw=None, scale="linear",
-               ticks=None, linthresh=0.1, linscale=1.0):
-    """Common axis furniture: labels, limits, scale, grid below the data, legend."""
+               ticks=None, linthresh=0.1, linscale=1.0, label_fontsize=19,
+               box=True):
+    """Common axis furniture: labels, limits, scale, grid below the data, legend.
+
+    `box=True` keeps all four spines. The package used to hide the top and right
+    ones -- a habit from single-panel exploratory plots, and wrong here: these
+    figures go into a manuscript where a closed frame reads as finished and
+    matches the surrounding ones.
+    """
     set_z_scale(ax, scale, ticks=ticks, linthresh=linthresh, linscale=linscale)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel, fontsize=label_fontsize)
+    ax.set_ylabel(ylabel, fontsize=label_fontsize)
     if xlim is not None:
         ax.set_xlim(*xlim)
     if ylim is not None:
         ax.set_ylim(*ylim)
     ax.grid(alpha=0.3, lw=0.7, color="0.7", ls=":")
     ax.set_axisbelow(True)
-    for spine in ("top", "right"):
-        ax.spines[spine].set_visible(False)
+    for spine in ax.spines.values():
+        spine.set_visible(box)
     if legend_kw is not False:
         kw = dict(fontsize=10, ncol=1, loc="best", handletextpad=0.6,
                   frameon=True, framealpha=0.9)
