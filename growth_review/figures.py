@@ -14,19 +14,19 @@ file, which is both less brittle and less work than maintaining a dict by hand.
 Run ``growth-review-figures --outdir figures`` to write all of them.
 """
 import argparse
+import inspect
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from . import io
-from .cosmology import FlatLCDM
+from . import io, theory
 from .methods import FAMILY_LABEL, FAMILY_ORDER
 from .plotting import (annotate_points, annotate_provenance,
                        fit_ylim_to_labels, plot_by_family, plot_by_survey,
                        plot_forecasts, plot_measurements, plot_reference,
-                       plot_theory, residual_panel)
+                       plot_theory, plot_theory_ratio, residual_panel)
 from .style import DESI_COLOR, PALETTE, dodge_x, style_axes, use_style
 
 # Per-tracer nudges for the DESI labels, in points. LRG2 and QSO sit almost on
@@ -109,7 +109,7 @@ def fig_overview(cosmo=None, bibkey=None, cited_only=False, scale="symlog"):
     cannot draw the six z = 0 rows at all. Linear below z = 0.1 and log above
     gives each regime about half the panel and keeps z = 0 on it.
     """
-    cosmo = cosmo or FlatLCDM()
+    cosmo = cosmo or theory.fiducial()
     df, dropped = _restrict(io.load_fsigma8(kind="measurement"), bibkey, cited_only)
 
     pv = df[df["method"] == "pv"]
@@ -178,7 +178,7 @@ def fig_overview(cosmo=None, bibkey=None, cited_only=False, scale="symlog"):
 def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear",
             exclude_surveys=RSD_EXCLUDED_SURVEYS):
     """Galaxy-clustering fsigma8: one colour per survey, DESI DR1 in red."""
-    cosmo = cosmo or FlatLCDM()
+    cosmo = cosmo or theory.fiducial()
     # Survey exclusion first, citation filter second, so `dropped` reports only
     # rows that were wanted on the panel and could not be cited.
     df = io.load_fsigma8(kind="measurement", method="rsd")
@@ -239,7 +239,7 @@ def fig_pv(cosmo=None, bibkey=None, cited_only=False, scale="linear",
     an independence that is not there. What does vary meaningfully between rows
     is how the velocity field was compressed before fitting.
     """
-    cosmo = cosmo or FlatLCDM()
+    cosmo = cosmo or theory.fiducial()
     df, dropped = _restrict(
         io.load_fsigma8(kind="measurement", method="pv",
                         desi_estimators=desi_estimators), bibkey, cited_only)
@@ -306,7 +306,7 @@ def fig_forecasts(cosmo=None, scale="symlog"):
     construction, so a reader who takes it for data concludes that the model is
     confirmed at that precision.
     """
-    cosmo = cosmo or FlatLCDM()
+    cosmo = cosmo or theory.fiducial()
     fc = io.load_fsigma8(kind="forecast")
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -350,44 +350,89 @@ def fig_forecasts(cosmo=None, scale="symlog"):
 
 
 # ------------------------------------------------------------------- figure 5
-def fig_theory(cosmo=None, bibkey=None, cited_only=False, k=0.1, scale="symlog"):
-    """Tabulated COLA growth histories against the compiled measurements."""
-    cosmo = cosmo or FlatLCDM()
+def fig_theory(cosmo=None, bibkey=None, cited_only=False, scale="symlog",
+               models=None, reference="GR", ratio=True, ylim_ratio=(-12, 32)):
+    """Theory curves against the compiled measurements.
+
+    `models` defaults to everything the package can draw without a Boltzmann
+    code on the spot: the fiducial LCDM curve, a growth-index diagnostic, the
+    shipped COLA runs, and any EFTCAMB export copied into ``data/theory/``. It is
+    NOT a modified-gravity survey of its own -- for that, export the models from
+    EFTCAMB (``growth-review-eftcamb-export``) and they appear here automatically.
+
+    The lower panel is the deviation from `reference` in per cent, which is where
+    a growth measurement's job is: the models differ from LCDM by a few to a few
+    tens of per cent, invisible on the upper panel's scale.
+    """
+    cosmo = cosmo or theory.fiducial()
     df, dropped = _restrict(
         io.load_fsigma8(kind="measurement", drop_derived=True), bibkey, cited_only)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    plot_reference(ax, cosmo, zmin=0.0, zmax=2.0)
-    plot_reference(ax, cosmo, zmin=0.0, zmax=2.0, gamma=0.68,
-                   color=PALETTE["grey"], ls="-.", lw=1.6)
-    for name, label, color in [
-            ("cola_growth_gr", "COLA GR", PALETTE["blue"]),
-            ("cola_growth_fr", "COLA $f(R)$", PALETTE["orange"]),
-            ("cola_growth_dgp", "COLA nDGP", PALETTE["aqua"])]:
-        plot_theory(ax, name, sigma8=cosmo.sigma8, k=k, zmax=2.0,
-                    color=color, label=f"{label} ($k={k:g}$ h/Mpc)")
+    if models is None:
+        names = (["GR", "gamma_0.68"]
+                 + theory.list_models(family="eftcamb")
+                 + theory.list_models(family="simulation"))
+    else:
+        names = list(models)
+
+    if ratio:
+        fig, (ax, axr) = plt.subplots(
+            2, 1, figsize=(10.5, 7.6), sharex=True,
+            gridspec_kw=dict(height_ratios=[2.4, 1], hspace=0.07))
+    else:
+        fig, ax = plt.subplots(figsize=(10.5, 6))
+        axr = None
+
+    plot_theory(ax, names, zmin=0.0, zmax=2.0)
 
     x = dodge_x(df["z"].to_numpy(), min_sep=0.006, step=0.010, scale=scale,
                 floor=0.0)
     plot_measurements(ax, df, x=x, color="0.35", marker="o", ms=5,
                       label=f"measurements ({len(df)})", alpha=0.75)
 
-    style_axes(ax, xlim=(-0.004, 2.05), ylim=(0.20, 0.75), scale=scale,
+    style_axes(ax, xlabel="" if ratio else "Redshift $z$",
+               xlim=(-0.004, 2.05), ylim=(0.20, 0.78), scale=scale,
                legend_kw=dict(loc="lower left", fontsize=9, ncol=2))
-    fig.tight_layout()
+
+    if ratio:
+        plot_theory_ratio(axr, names, reference=reference, zmin=0.0, zmax=2.0)
+        # measurements on the same axis: without them the panel says how far
+        # apart the models are, not whether the data can tell them apart
+        residual_panel(axr, df, theory.get(reference), x=x, ms=4, percent=True,
+                       color="0.55")
+        axr.set_ylabel(r"$\Delta f\sigma_8$ [\%]".replace("\\%", "%"), fontsize=11)
+        axr.set_ylim(*ylim_ratio)
+        axr.set_xlabel("Redshift $z$")
+        axr.set_xlim(-0.004, 2.05)
+        fig.align_ylabels()
+    else:
+        fig.tight_layout()
+
+    eftcamb = theory.list_models(family="eftcamb")
+    provenance = (
+        r" Modified-gravity curves are EFTCAMB runs exported from "
+        r"\texttt{EFTCAMB\_fsigma8}: " +
+        ", ".join(theory.get(n).label for n in eftcamb) + r"."
+        if eftcamb else
+        r" No modified-gravity curve is shown: those are EFTCAMB runs, and no "
+        r"export was available when this figure was built.")
 
     caption = (
-        r"\caption{Tabulated growth histories from COLA simulations of GR, "
-        rf"$f(R)$ and nDGP at $k={k:g}\,h\,$Mpc$^{{-1}}$, together with a "
-        r"$\gamma=0.68$ growth-index curve, compared with the compiled "
-        r"measurements. In $f(R)$ the growth rate is scale dependent, so the "
-        r"curve shown is an effective $f\sigma_8$ at that wavenumber and not the "
-        r"model's growth rate. Measurements whose published quantity is not "
-        r"$f\sigma_8$ (those that quote $\Omega_m^{0.55}\sigma_8$ or $\beta$) are "
-        r"excluded here, since identifying their result with $f\sigma_8$ assumes "
-        r"the GR growth index and would make the comparison circular.}")
+        r"\caption{Theory predictions for $f\sigma_8(z)$ against the compiled "
+        r"measurements (grey). The reference curve is flat $\Lambda$CDM with GR "
+        r"growth for a Planck~2018 fiducial cosmology, integrated from the linear "
+        r"growth equation; the $\gamma$ curve replaces $f$ by "
+        r"$\Omega_m(z)^{\gamma}$, a parametrisation rather than a theory."
+        + provenance +
+        r" The lower panel gives the deviation from "
+        + theory.get(reference).label + r" in per cent, with the measurements on "
+        r"the same scale. Measurements whose published quantity is not "
+        r"$f\sigma_8$ (those quoting $\Omega_m^{0.55}\sigma_8$ or $\beta$) are "
+        r"excluded, since identifying their result with $f\sigma_8$ assumes the "
+        r"GR growth index and would make the comparison circular.}")
     return fig, dict(caption=caption, missing_citations=[], dropped=dropped,
-                     plotted=df, n=len(df))
+                     plotted=df, n=len(df), models=names,
+                     caveats={n: theory.get(n).caveats for n in names})
 
 
 # ----------------------------------------------------------------------- driver
@@ -412,10 +457,14 @@ def main(argv=None):
 
     use_style()
     args.outdir.mkdir(parents=True, exist_ok=True)
-    cosmo = FlatLCDM()
+    cosmo = theory.fiducial()
 
     for name in (args.only or sorted(FIGURES)):
-        fig, meta = FIGURES[name](cosmo=cosmo)
+        # fig_theory_scale takes no fiducial: it plots f(k,z) per model, and the
+        # fiducial cosmology is already inside each model.
+        func = FIGURES[name]
+        takes_cosmo = "cosmo" in inspect.signature(func).parameters
+        fig, meta = func(cosmo=cosmo) if takes_cosmo else func()
         path = args.outdir / f"growth_{name}.{args.format}"
         fig.savefig(path, bbox_inches="tight")
         plt.close(fig)

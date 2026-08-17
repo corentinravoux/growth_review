@@ -250,25 +250,7 @@ def dropped_without_z():
 
 
 # ---------------------------------------------------------------------- theory
-def load_theory(name, k=0.01):
-    """A COLA growth table as (z, D, f, fsigma8-shape), at wavenumber `k`.
-
-    `k` selects the D_<k>/f_<k> column pair; available values are printed in the
-    error message if you ask for one that is not tabulated. fsigma8 is returned
-    only up to the sigma8 normalisation the run used -- multiply by your sigma8.
-    Rows with a > 1 are dropped: the last one carries a spurious f from the
-    end-of-grid derivative (see the registry caveat).
-    """
-    df = load_raw(name)
-    kcols = sorted({float(c.split("_", 1)[1]) for c in df.columns
-                    if c.startswith("D_")})
-    if not any(abs(kk - k) < 1e-12 for kk in kcols):
-        raise ValueError(f"k={k} not tabulated in {name!r}; available: {kcols}")
-    key = next(c.split("_", 1)[1] for c in df.columns
-               if c.startswith("D_") and abs(float(c.split("_", 1)[1]) - k) < 1e-12)
-    df = df[df["a"] <= 1.0]
-    a = df["a"].to_numpy()
-    D = df[f"D_{key}"].to_numpy()
-    f = df[f"f_{key}"].to_numpy()
-    D = D / D[-1]                                   # normalise D(a=1) = 1
-    return pd.DataFrame({"z": 1.0 / a - 1.0, "a": a, "D": D, "f": f, "fD": f * D})
+# Theory tables are NOT read here. Everything model-side -- the fiducial LCDM
+# curve, the COLA runs and the EFTCAMB exports -- lives in `growth_review.theory`,
+# which is the one place a curve's normalisation convention is decided.
+# `theory.load_theory` reads the COLA files (and calls `load_raw` above to do it).

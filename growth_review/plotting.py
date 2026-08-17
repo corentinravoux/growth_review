@@ -25,30 +25,107 @@ from .methods import FAMILY_LABEL, FAMILY_ORDER
 
 
 # ---------------------------------------------------------------- theory curves
-def plot_reference(ax, cosmo, zmin=0.0, zmax=1.7, n=400, gamma=None, **kw):
-    """The fiducial LCDM/GR fsigma8(z) curve. Drawn first, at zorder 0."""
+def _resolve(model, k=None, sigma8=None, **style):
+    """A ``theory.TheoryCurve`` from a model object, a registry name, or a
+    tabulated dataset name.
+
+    The third case is what lets a raw table be plotted without registering it
+    first: ``plot_theory(ax, "cola_growth_fr", k=1.0)`` builds a one-off
+    ``TableModel`` at that wavenumber.
+    """
+    from . import theory
+    from .datasets import DATASETS
+
+    if isinstance(model, theory.TheoryCurve):
+        return model
+    if isinstance(model, str) and model in theory.list_models():
+        return theory.get(model)
+    if isinstance(model, str) and (model in DATASETS or model.endswith(".ecsv")):
+        kw = dict(style)
+        if sigma8 is not None:
+            kw["sigma8"] = sigma8
+        return theory.table_model(model, k=k, **kw)
+    return theory.get(model)          # raises with the list of known names
+
+
+def plot_reference(ax, cosmo=None, zmin=0.0, zmax=1.7, n=400, gamma=None, **kw):
+    """The fiducial LCDM/GR fsigma8(z) curve. Drawn first, at zorder 0.
+
+    `gamma` swaps it for the f = Omega_m(z)^gamma prescription on the same
+    background -- a diagnostic, not a theory (see ``theory.growth_index``).
+    """
+    from . import theory
+    cosmo = theory.fiducial() if cosmo is None else cosmo
     z = np.linspace(zmin, zmax, n)
     y = cosmo.fsigma8(z) if gamma is None else cosmo.fsigma8_gamma(z, gamma)
-    label = (r"$\Lambda$CDM (GR)" if gamma is None
+    label = (getattr(cosmo, "label", r"$\Lambda$CDM (GR)") if gamma is None
              else rf"$f=\Omega_m(z)^{{{gamma:g}}}$")
     style = dict(color="k", lw=2.0, zorder=0, label=label)
     style.update(kw)
     return ax.plot(z, y, **style)
 
 
-def plot_theory(ax, name, sigma8, k=0.01, zmax=2.0, **kw):
-    """A tabulated COLA growth curve, rescaled to `sigma8`.
+def plot_theory(ax, *models, z=None, zmin=0.0, zmax=2.0, n=300, k=None,
+                sigma8=None, label=None, zorder=1, **kw):
+    """Theory fsigma8(z) curves, each drawn in the style it is registered with.
 
-    `k` picks the wavenumber column. For f(R) this matters -- the growth is
-    scale-dependent and a single curve is an effective quantity at one k, not
-    the model's growth rate. State the k in the caption.
+        plot_theory(ax, "GR", "cola_fr")
+        plot_theory(ax, *theory.list_models(family="eftcamb"))
+        plot_theory(ax, "eftcamb_Kmouflage", zmax=1.5)
+
+    Accepts model objects, registry names, an iterable of either, or a
+    tabulated dataset name (then `k` and `sigma8` apply to the table). Anything
+    passed as **kw overrides the registered style for every curve drawn, and
+    `label` only makes sense for a single one.
     """
-    from .io import load_theory
-    t = load_theory(name, k=k)
-    t = t[t["z"] <= zmax].sort_values("z")
-    style = dict(lw=1.8, ls="--", zorder=1, label=f"{name} (k={k:g} h/Mpc)")
-    style.update(kw)
-    return ax.plot(t["z"], sigma8 * t["fD"], **style)
+    flat = []
+    for m in models:
+        if isinstance(m, (list, tuple, set)):
+            flat.extend(m)
+        else:
+            flat.append(m)
+    if label is not None and len(flat) > 1:
+        raise ValueError("`label` overrides one curve's label; pass one model")
+
+    lines = []
+    for m in flat:
+        curve = _resolve(m, k=k, sigma8=sigma8)
+        zz, y = curve.curve(z=z, zmin=zmin, zmax=zmax, n=n)
+        style = dict(color=curve.style.color, ls=curve.style.ls,
+                     lw=curve.style.lw, zorder=zorder,
+                     label=label if label is not None else curve.label)
+        style.update(kw)
+        lines.extend(ax.plot(zz, y, **style))
+    return lines
+
+
+def plot_theory_ratio(ax, *models, reference="GR", z=None, zmin=0.0, zmax=2.0,
+                      n=300, k=None, percent=True, zorder=1, **kw):
+    """Lower-panel companion to `plot_theory`: deviation from `reference`.
+
+    Unlabelled by design -- it repeats the upper panel's series, and a second
+    legend saying the same thing costs panel space for no information.
+    """
+    from . import theory
+    ref = _resolve(reference, k=k)
+    flat = [m for grp in models
+            for m in (grp if isinstance(grp, (list, tuple, set)) else [grp])]
+    lines = []
+    for m in flat:
+        curve = _resolve(m, k=k)
+        if curve is ref or curve.name == ref.name:
+            continue
+        zz, r = curve.ratio(ref, z=z, zmin=zmin, zmax=zmax, n=n, percent=percent)
+        style = dict(color=curve.style.color, ls=curve.style.ls,
+                     lw=curve.style.lw, zorder=zorder)
+        style.update(kw)
+        lines.extend(ax.plot(zz, r, **style))
+    ax.axhline(0.0 if percent else 1.0, color="k", lw=1.3, zorder=0)
+    ax.set_ylabel(r"$\Delta f\sigma_8$ vs " + ref.label
+                  + (" [%]" if percent else ""), fontsize=11)
+    ax.grid(alpha=0.3, lw=0.7, color="0.7", ls=":")
+    ax.set_axisbelow(True)
+    return lines
 
 
 # ------------------------------------------------------------------ data points
@@ -75,18 +152,25 @@ def plot_measurements(ax, df, color=PALETTE["blue"], marker="o", ms=7,
 
 
 def plot_forecasts(ax, df, cosmo, color=PALETTE["violet"], marker="_", ms=9,
-                   label=None, **kw):
+                   label=None, x=None, **kw):
     """Forecast precisions, drawn as bars around the fiducial prediction.
 
     Deliberately unlike `plot_measurements`: no marker face, thinner bars, lower
     zorder. A forecast has no central value -- the position on the y axis is the
     fiducial cosmology's, not a measurement's, and the figure must not suggest
     otherwise.
+
+    `x` overrides the plotted abscissa, as in `plot_measurements`: several survey
+    configurations forecast the *same* redshift bins, so without a dodge their
+    bars land on top of each other. The bar length is still computed at the
+    physical `df["z"]`, and the dodge must be declared in the caption.
     """
     if not len(df):
         return None
     z = df["z"].to_numpy()
     y = cosmo.fsigma8(z)
+    if x is not None:
+        z = np.asarray(x, dtype=float)
     err = df["frac_err"].to_numpy() * y
     style = dict(fmt=marker, ms=ms, mec=color, ecolor=color, mfc="none",
                  elinewidth=1.1, mew=1.4, capsize=0, alpha=0.9,
@@ -297,7 +381,8 @@ def annotate_points(ax, df, x=None, offsets=None, color="0.3", fontsize=8.5):
 
 # --------------------------------------------------------------- residual panel
 def residual_panel(ax, df, cosmo, by=None, color_map=None, marker_map=None,
-                   order=None, x=None, ms=6, percent=True):
+                   order=None, x=None, ms=6, percent=True,
+                   color=PALETTE["blue"], marker="o"):
     """Lower panel: deviation of each measurement from the fiducial prediction.
 
     Percent by default; set percent=False for the deviation in units of the
@@ -322,7 +407,7 @@ def residual_panel(ax, df, cosmo, by=None, color_map=None, marker_map=None,
         ax.set_ylabel(r"pull $[\sigma]$", fontsize=11)
 
     if by is None:
-        _errorbar(ax, xs, y, lo, hi, PALETTE["blue"], "o", ms, None)
+        _errorbar(ax, xs, y, lo, hi, color, marker, ms, None)
     else:
         groups = list(order) if order else list(dict.fromkeys(d[by].dropna()))
         for i, g in enumerate(groups):

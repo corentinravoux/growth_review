@@ -10,7 +10,7 @@ The package exists to keep three things apart that growth plots routinely mix:
 |---|---|---|
 | `measurement` | a published central value with an uncertainty | outlined marker at the published value |
 | `forecast` | a projected *precision*, with no central value of its own | thin bar around the fiducial curve, no marker face |
-| `theory` | a tabulated model prediction | curve |
+| `theory` | a model prediction: the fiducial ΛCDM curve, or an EFTCAMB / simulation table | curve |
 
 A forecast bar sits exactly on the model curve by construction. Styled like a
 measurement, it tells the reader the model has been confirmed at that precision.
@@ -52,7 +52,80 @@ growth-review-figures --outdir figures
 growth-review-figures --only pv rsd --format png
 ```
 
-`python -m growth_review` prints the registry.
+`python -m growth_review` prints both registries: the data files and the theory
+models.
+
+## Theory curves
+
+Two sources, and the split is deliberate.
+
+**The fiducial reference** — flat ΛCDM (or w₀wₐ) with GR growth — is integrated
+here in numpy, because every figure needs it and it costs nothing:
+
+```python
+z = np.linspace(0, 2, 200)
+gr.theory.fsigma8("GR", z)                      # the reference curve
+gr.theory.fsigma8("gamma_0.68", z)              # f = Ωₘ(z)^γ, a diagnostic
+ax.plot(*gr.theory.get("GR").curve(zmax=1.5))
+gr.plotting.plot_theory(ax, "GR", "cola_fr")
+```
+
+The growth equation is integrated by RK4 in ln a; the solver reproduces the
+closed-form ΛCDM growth integral to 1e-6 and f matches Ωₘ^0.55 to 0.5% (both
+asserted in the test suite).
+
+**Modified gravity comes from EFTCAMB — nothing here approximates it.**
+`growth_review.theory.eftcamb` is the port of
+`Science/Peculiar_Vel/theory_plots/modified_gravity/EFTCAMB_fsigma8.ipynb`: the
+model registry (designer f(R), pure EFT, RPH, Hořava, ADE, K-mouflage,
+quintessence, beyond Horndeski, scaling cubic Galileon, Jordan–Brans–Dicke), the
+B₀↔f_R0 inversion, the JBD shooting path, `compute()` with CAMB's
+highest-z-first ordering undone, the H(z)=H₀ consistency check, and the export
+writer. It needs a compiled H-EFTCAMB (`$EFTCAMB_PATH`).
+
+```bash
+# where the build lives (NERSC)
+growth-review-eftcamb-export \
+    --models GR Kmouflage ScalingCubicGalileon Horava JBD_wBD100 \
+    --fR0 -1e-4 -1e-5 -1e-6
+# -> data/theory/eftcamb_<model>.ecsv, flags + cosmology + stability in the header
+```
+
+```python
+# anywhere: copy the ECSVs into data/theory/ and they become ordinary models,
+# with the source notebook's own colours, linestyles and labels
+gr.theory.register_exports()
+gr.plotting.plot_theory(ax, "GR", *gr.theory.list_models(family="eftcamb"))
+```
+
+`notebooks/eftcamb_theory.ipynb` runs the whole port and writes the exports.
+
+**nDGP is the one model in that module that is not an EFTCAMB run** — it is not one
+in the source notebook either. DGP has no EFTCAMB mapping, and the covariant
+embedding of its decoupling limit is ghost-unstable on one branch and
+gradient-unstable on the other once coupled to gravity (§3.5 there). What the
+notebook uses instead, and what `eftcamb._ndgp_growth_ode` / `_ndgp_results`
+transcribe — integrator, tolerances and σ8 anchoring included — is the standard
+quasi-static treatment of the nDGP simulation and RSD literature: μ(a) = 1 +
+1/(3β), β = 1 + 2Hr_c(1 + Ḣ/3H²) (Koyama & Maartens 2006; Schmidt 2009; Barreira
+et al. 2016), on ΛCDM's expansion history, with σ8 anchored to the module's own
+CAMB GR run. It still needs a build for that anchor, and scipy for the ODE. Its
+z = 0 fσ8 enhancement reproduces the archived figure: +14.0% for H₀r_c = 1 and
++3.5% for H₀r_c = 5, against +13.5% and +3.5% read off the original.
+
+An earlier version of this layer computed nDGP *and* Hu-Sawicki f(R) itself, from
+a quasi-static μ(k,a) of my own writing. That was removed: an approximation
+written here is not the model EFTCAMB defines, and shipping both invited reading
+one as the other. `test_no_modified_gravity_model_is_computed_in_this_package`
+pins the decision, and nDGP came back only as the source notebook's own code, in
+the EFTCAMB module, reached the same way as everything else there.
+
+**σ8 normalisation** is an explicit argument, because it changes the numbers:
+`norm="early"` (default) means a shared primordial amplitude, what a Boltzmann
+code does at fixed Aₛ, so a faster-growing model predicts a larger σ8 today;
+`norm="today"` rescales to a common σ8(0) and leaves only the redshift shape. An
+EFTCAMB export carries its own amplitude and is used unchanged; the COLA tables
+carry growth only, so they are shape × fiducial σ8.
 
 ## Citations live outside the package
 
@@ -72,20 +145,41 @@ reported rather than guessed at.
 
 ```
 growth_review/
-├── cosmology.py   flat-LCDM background + integrated linear growth (no CAMB/CLASS)
+├── theory/        fsigma8(z) curves, callable anywhere
+│   ├── background.py  flat CPL background: E(a), Omega_m(a), dlnH/dlna
+│   ├── growth.py      RK4 integration of the GR growth equation + growth index
+│   ├── model.py       GrowthModel / TableModel / Cosmology
+│   ├── registry.py    named models, their styles, the one-liner accessors
+│   ├── tables.py      tabulated curves (COLA runs, EFTCAMB exports)
+│   └── eftcamb.py     THE modified-gravity backend: port of EFTCAMB_fsigma8.ipynb
 ├── datasets.py    the registry: every file, its kind, probe, columns and caveats
 ├── io.py          readers, and the tidy fsigma8 view over all of them
 ├── methods.py     PV method taxonomy + the paper sentence behind each assignment
 ├── style.py       palette, reserved colours, and the redshift x-scales
-├── plotting.py    primitives over the tidy schema
+├── plotting.py    primitives over the tidy schema + the theory-curve drawing
 ├── figures.py     the five composed figures + CLI
 └── data/
     ├── measurements/   fsigma8 (PV, RSD), BAO, S8, SN Hubble diagram
     ├── forecasts/      Euclid, DESI design, 4MOST, ZTF/LSST SN-PV
-    └── theory/         COLA growth histories: GR, f(R), nDGP
+    └── theory/         COLA growth histories, and eftcamb_*.ecsv exports
 ```
 
-`notebooks/growth_review.ipynb` walks through all of it.
+## Notebooks
+
+| notebook | what it covers | needs EFTCAMB |
+|---|---|---|
+| `notebooks/growth_review.ipynb` | the compilation itself: registry, loaders, PV method families, the five data figures, citation plumbing | no |
+| `notebooks/eftcamb_theory.ipynb` | the port of `EFTCAMB_fsigma8.ipynb`: model registry, f_R0-specified designer f(R), fσ8 figure, B₀ scan, f(k,z) scale dependence, H(z) comparison, the 0.1% and 1% background-unmodified figures, and the export step | **yes** — shipped unexecuted |
+| `notebooks/forecasts_vs_theory.ipynb` | ZTF / LSST peculiar-velocity and Euclid / DESI forecasts on a log-z axis: precision vs model deviation, σ per bin, the \|f_R0\| each programme reaches at 3σ | only for the model curves; the forecast panels build without it |
+
+They run on the `growth_review` kernel:
+
+```bash
+.venv/bin/python -m ipykernel install --user --name growth_review \
+    --display-name growth_review
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
+    --ExecutePreprocessor.kernel_name=growth_review notebooks/theory_curves.ipynb
+```
 
 ## The redshift axis
 

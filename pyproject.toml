@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "growth_review"
-version = "0.1.0"
+version = "0.3.0"
 description = "Growth-rate review: compiled fsigma8 / BAO / S8 measurements, forecasts and theory curves, with plotting"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -18,11 +18,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "scipy"]
 notebook = ["jupyter"]
+# The EFTCAMB backend needs scipy for the nDGP growth ODE (the integrator and
+# tolerances of the source notebook, kept as they are). It also needs a compiled
+# H-EFTCAMB, which is built from source and set through $EFTCAMB_PATH -- not a
+# Python dependency, so it cannot be declared here.
+eftcamb = ["scipy"]
 
 [project.scripts]
 growth-review-figures = "growth_review.figures:main"
+# Needs a compiled H-EFTCAMB (EFTCAMB_PATH); everything else in the package runs
+# without it. Writes theory tables the rest of the package reads.
+growth-review-eftcamb-export = "growth_review.theory.eftcamb:main"
 
 [tool.setuptools.packages.find]
 include = ["growth_review*"]

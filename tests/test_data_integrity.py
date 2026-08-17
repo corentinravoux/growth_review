@@ -200,26 +200,11 @@ def test_drop_derived_removes_exactly_the_circular_rows():
     # Turnbull2012 is also 'der' but has no z_eff, so it never reaches the frame
 
 
-# --------------------------------------------------------------- cosmology
-def test_growth_rate_matches_the_gr_growth_index():
-    c = gr.FlatLCDM()
-    for z in (0.0, 0.5, 1.0, 2.0):
-        assert c.growth_rate(z) == pytest.approx(c.omega_m_z(z) ** 0.55, rel=0.01)
-
-
-def test_growth_factor_normalisation():
-    c = gr.FlatLCDM()
-    assert c.growth_factor(0.0) == pytest.approx(1.0, abs=1e-6)
-    assert c.growth_factor(1.0) < c.growth_factor(0.0)
-
-
-def test_no_division_by_zero_in_growth_rate():
-    c = gr.FlatLCDM()
-    assert np.isfinite(c._f).all()
-
-
+# -------------------------------------------------------- theory tables (I/O)
+# The physics of the theory layer is tested in test_theory.py; these two are
+# about the shipped COLA files and belong with the other data-integrity checks.
 def test_cola_gr_run_reproduces_the_analytic_growth():
-    c = gr.FlatLCDM()
+    c = gr.theory.fiducial()
     t = gr.load_theory("cola_growth_gr", k=0.01)
     t = t[(t["z"] > 0.05) & (t["z"] < 1.5)]
     assert np.allclose(t["D"], c.growth_factor(t["z"].to_numpy()), rtol=0.02)
