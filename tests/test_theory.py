@@ -495,3 +495,57 @@ def test_the_local_bisection_finds_a_root():
     assert root == pytest.approx(2.0 ** (1 / 3), rel=1e-9)
     with pytest.raises(ValueError, match="same"):
         eftcamb.bisect(lambda x: x ** 2 + 1.0, -1.0, 1.0)
+
+
+# ------------------------------------------------- the background cut on exports
+def _fake_export(tmp_path, model, e_scale=1.0, fs8_scale=1.0):
+    """One export table with a rescaled H(z), for the background-cut tests."""
+    z = np.linspace(0.0, 2.0, 41)
+    ref = th.fiducial()
+    th.write_export(tmp_path / f"eftcamb_{model}.ecsv", z,
+                    ref.sigma8_z(z), fs8_scale * ref.fsigma8(z),
+                    E=e_scale * ref.E(z), meta=dict(model=model))
+
+
+def test_background_cut_splits_exports_by_expansion_history(tmp_path):
+    _fake_export(tmp_path, "GR")
+    _fake_export(tmp_path, "Kmouflage", e_scale=1.005, fs8_scale=1.24)
+    _fake_export(tmp_path, "Horava", e_scale=1.0007, fs8_scale=1.001)
+    _fake_export(tmp_path, "Quintessence", e_scale=1.06, fs8_scale=0.95)
+    names = th.register_exports(directory=tmp_path)
+    try:
+        dev = th.background_deviations()
+        assert dev["eftcamb_Kmouflage"] == pytest.approx(0.005, rel=1e-6)
+        assert dev["eftcamb_Quintessence"] == pytest.approx(0.06, rel=1e-6)
+
+        # 0.1% cut: only the one that barely moves H(z)
+        assert th.background_unmodified(1e-3) == ["eftcamb_GR", "eftcamb_Horava"]
+        # 1% cut: K-mouflage joins, quintessence stays out
+        assert set(th.background_unmodified(1e-2)) == {
+            "eftcamb_GR", "eftcamb_Horava", "eftcamb_Kmouflage"}
+        # the hand-exclusion works, the reference staying first
+        dropped = th.background_unmodified(1e-2, exclude=("Horava",))
+        assert dropped[0] == "eftcamb_GR" and "eftcamb_Horava" not in dropped
+    finally:
+        for n in names:
+            th.registry._FACTORIES.pop(n, None)
+            th.registry._CACHE.pop(n, None)
+
+
+def test_background_cut_skips_a_table_without_an_expansion_history(tmp_path):
+    """BeyondHorndeski exports without E (its H(z) query is broken in the build);
+    a missing background must not be read as an unmodified one."""
+    _fake_export(tmp_path, "GR")
+    z = np.linspace(0.0, 2.0, 41)
+    ref = th.fiducial()
+    th.write_export(tmp_path / "eftcamb_BeyondHorndeski.ecsv", z,
+                    ref.sigma8_z(z), ref.fsigma8(z), E=None,
+                    meta=dict(model="BeyondHorndeski"))
+    names = th.register_exports(directory=tmp_path)
+    try:
+        assert "eftcamb_BeyondHorndeski" not in th.background_deviations()
+        assert "eftcamb_BeyondHorndeski" not in th.background_unmodified(1e-2)
+    finally:
+        for n in names:
+            th.registry._FACTORIES.pop(n, None)
+            th.registry._CACHE.pop(n, None)

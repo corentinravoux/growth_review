@@ -33,9 +33,11 @@ from . import background, growth, model, registry, tables
 from .background import PLANCK18, Background
 from .growth import GrowthSolution, growth_from_index, solve_growth
 from .model import Cosmology, FlatLCDM, GrowthModel, Style, TableModel, TheoryCurve
-from .registry import (EFTCAMB_STYLE, export_style, families, fiducial, fsigma8,
-                       get, growth_index, growth_rate, latex_sci, list_models,
-                       ratio, register, register_exports, sigma8, summary_table)
+from .registry import (EFTCAMB_STYLE, background_deviations,
+                       background_unmodified, export_style, families, fiducial,
+                       fsigma8, get, growth_index, growth_rate, latex_sci,
+                       list_models, ratio, register, register_exports, sigma8,
+                       summary_table)
 from .tables import (load_export, load_theory, read_meta, table_model,
                      write_export)
 
@@ -47,6 +49,7 @@ __all__ = [
     "get", "register", "list_models", "families", "summary_table", "fiducial",
     "fsigma8", "sigma8", "growth_rate", "ratio", "latex_sci", "growth_index",
     "register_exports", "EFTCAMB_STYLE", "export_style",
+    "background_deviations", "background_unmodified",
     "load_theory", "load_export", "table_model", "write_export", "read_meta",
 ]
 

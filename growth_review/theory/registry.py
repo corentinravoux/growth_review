@@ -181,6 +181,45 @@ def export_style(model_name):
                                           "0.35", "-.", 2.0))
 
 
+def background_deviations(reference="eftcamb_GR", family="eftcamb", z=None):
+    """max_z |H_model/H_ref - 1| for every model with an expansion history.
+
+    The quantitative version of "does this model change the background": a model
+    that leaves H(z) alone cannot be separated from LCDM by BAO or supernova
+    distances, so whatever it does to fsigma8 is growth information those probes
+    cannot reach. Models whose table carries no E column (an export whose
+    background query failed) are skipped rather than counted as unmodified.
+    """
+    z = np.linspace(0.0, 2.0, 41) if z is None else np.asarray(z, dtype=float)
+    E_ref = get(reference).E(z)
+    out = {}
+    for name in list_models(family=family):
+        if name == reference:
+            continue
+        try:
+            out[name] = float(np.max(np.abs(get(name).E(z) / E_ref - 1.0)))
+        except ValueError:                  # no expansion history in the table
+            continue
+    return out
+
+
+def background_unmodified(threshold=1e-2, reference="eftcamb_GR", family="eftcamb",
+                          exclude=(), z=None, include_reference=True):
+    """Names passing the background cut, reference first.
+
+    `threshold` = 1e-3 isolates models that preserve H(z) *by construction*
+    (designer f(R), the nDGP phenomenology); 1e-2 also admits those a BAO/SN
+    analysis at current precision would not obviously separate from LCDM.
+    `exclude` drops models by hand -- the source notebook drops Horava, which
+    clears the cut but whose fsigma8 is also indistinguishable from GR's, so it
+    contributes no visible curve.
+    """
+    deviations = background_deviations(reference=reference, family=family, z=z)
+    kept = [n for n, dev in deviations.items()
+            if dev <= threshold and not any(x in n for x in exclude)]
+    return ([reference] + kept) if include_reference else kept
+
+
 def register_exports(directory=None, prefix="eftcamb_", replace=True):
     """Register every EFTCAMB export table found, and return their names.
 

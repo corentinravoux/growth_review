@@ -229,9 +229,28 @@ def fig_rsd(cosmo=None, bibkey=None, cited_only=False, scale="linear",
 
 
 # ------------------------------------------------------------------- figure 3
+# Rows that use peculiar-velocity data but do not measure fsigma8 from the
+# velocities themselves. Kept in the compilation, excluded from a panel that is
+# about direct PV measurements -- the reason travels with each key.
+INDIRECT_PV_KEYS = {
+    "Feix2015": "fsigma8 from luminosity-function fluctuations, not from measured "
+                "velocities",
+    "Feix2017": "same, SDSS DR13",
+    "MaBranchiniScott2012": "velocity-vs-gravity-field comparison (PSCz), not a "
+                            "direct PV fsigma8",
+    "Nusser2017": "quotes an interval on the velocity-density correlation; the "
+                  "midpoint is derived, not a published fsigma8 "
+                  "(provenance='der')",
+}
+
+
 def fig_pv(cosmo=None, bibkey=None, cited_only=False, scale="linear",
-           desi_estimators=False, provenance=True):
+           desi_estimators=False, provenance=True, exclude_keys=()):
     """Peculiar-velocity fsigma8, grouped by method family.
+
+    `exclude_keys` drops rows by key -- pass ``INDIRECT_PV_KEYS`` for a panel
+    restricted to direct velocity measurements. What is dropped comes back in
+    ``meta["excluded"]`` with the reason, so a caption can say it.
 
     Grouped by method rather than by survey on purpose: the compilation is
     inhomogeneous -- the entries share data, and 6dFGSv, SDSS PV, SFI++, 2MTF
@@ -240,9 +259,12 @@ def fig_pv(cosmo=None, bibkey=None, cited_only=False, scale="linear",
     is how the velocity field was compressed before fitting.
     """
     cosmo = cosmo or theory.fiducial()
-    df, dropped = _restrict(
-        io.load_fsigma8(kind="measurement", method="pv",
-                        desi_estimators=desi_estimators), bibkey, cited_only)
+    df = io.load_fsigma8(kind="measurement", method="pv",
+                         desi_estimators=desi_estimators)
+    excluded = {k: (exclude_keys[k] if isinstance(exclude_keys, dict) else "")
+                for k in exclude_keys if k in set(df["key"])}
+    df = df[~df["key"].isin(excluded)].reset_index(drop=True)
+    df, dropped = _restrict(df, bibkey, cited_only)
     dropped_no_z = io.dropped_without_z()["key"].tolist()
 
     # floor=0: six rows sit at exactly z_eff = 0, and a symmetric dodge would
@@ -294,7 +316,8 @@ def fig_pv(cosmo=None, bibkey=None, cited_only=False, scale="linear",
         caption = caption.replace("{PV}", "").replace("{DESI}", "")
 
     return fig, dict(caption=caption, missing_citations=missing, dropped=dropped,
-                     dropped_no_z=dropped_no_z, plotted=df, n=len(df))
+                     dropped_no_z=dropped_no_z, plotted=df, n=len(df),
+                     excluded=excluded)
 
 
 # ------------------------------------------------------------------- figure 4
