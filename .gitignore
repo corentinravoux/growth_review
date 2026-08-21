@@ -219,3 +219,8 @@ __marimo__/
 
 # Generated figures -- rebuild with `growth-review-figures`
 figures/
+
+# EFTCAMB exports -- machine-local output of `growth-review-eftcamb-export`,
+# regenerable wherever a build exists. The cola_growth_*.ecsv files next to them
+# are shipped package data and stay tracked.
+growth_review/data/theory/eftcamb_*.ecsv
