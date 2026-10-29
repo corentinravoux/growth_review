@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: growth_review
+abstract: >-
+  Growth-rate review: compiled fsigma8 / BAO / S8 measurements, forecasts and theory curves, with plotting
+type: software
+authors:
+  - given-names: Corentin
+    family-names: Ravoux
+    email: corentin.ravoux.research@gmail.com
+version: "0.1.0"
+date-released: 2026-10-29
+license: MIT
+repository-code: "https://github.com/corentinravoux/growth_review"
+url: "https://corentinravoux.github.io/growth_review/"
+keywords:
+  - cosmology

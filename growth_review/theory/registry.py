@@ -28,7 +28,7 @@ import numpy as np
 
 from ..style import PALETTE
 from . import tables
-from .background import PLANCK18, Background
+from .background import Background
 from .model import Cosmology, GrowthModel, TheoryCurve
 
 _FACTORIES = {}
@@ -239,8 +239,8 @@ def register_exports(directory=None, prefix="eftcamb_", replace=True):
         label, color, ls, lw = export_style(model)
         name = f"{prefix}{model}"
         register(name,
-                 lambda p=path, l=label, c=color, s=ls, w=lw: tables.table_model(
-                     p, label=l, color=c, ls=s, lw=w, norm="early",
+                 lambda p=path, lab=label, c=color, s=ls, w=lw: tables.table_model(
+                     p, label=lab, color=c, ls=s, lw=w, norm="early",
                      family="eftcamb",
                      source=f"EFTCAMB export: {p.name}",
                      caveats=("Boltzmann output, shared-A_s sigma8; see the ECSV "

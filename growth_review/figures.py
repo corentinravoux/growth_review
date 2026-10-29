@@ -23,10 +23,19 @@ import pandas as pd
 
 from . import io, theory
 from .methods import FAMILY_LABEL, FAMILY_ORDER
-from .plotting import (annotate_points, annotate_provenance,
-                       fit_ylim_to_labels, plot_by_family, plot_by_survey,
-                       plot_forecasts, plot_measurements, plot_reference,
-                       plot_theory, plot_theory_ratio, residual_panel)
+from .plotting import (
+    annotate_points,
+    annotate_provenance,
+    fit_ylim_to_labels,
+    plot_by_family,
+    plot_by_survey,
+    plot_forecasts,
+    plot_measurements,
+    plot_reference,
+    plot_theory,
+    plot_theory_ratio,
+    residual_panel,
+)
 from .style import DESI_COLOR, PALETTE, dodge_x, style_axes, use_style
 
 # Per-tracer nudges for the DESI labels, in points. LRG2 and QSO sit almost on

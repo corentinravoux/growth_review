@@ -1,5 +1,11 @@
 # growth_review
 
+[![tests](https://github.com/corentinravoux/growth_review/actions/workflows/tests.yml/badge.svg)](https://github.com/corentinravoux/growth_review/actions/workflows/tests.yml)
+[![docs](https://github.com/corentinravoux/growth_review/actions/workflows/docs.yml/badge.svg)](https://corentinravoux.github.io/growth_review/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+📖 **Documentation:** <https://corentinravoux.github.io/growth_review/>
+
 Compiled constraints on the growth of structure — **measurements**, **forecasts**
 and **theory curves** — with the loaders and plotting layer that turn them into
 review figures.

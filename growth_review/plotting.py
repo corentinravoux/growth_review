@@ -19,9 +19,14 @@ plots mislead:
 import numpy as np
 import pandas as pd
 
-from .style import (PALETTE, MARKERS, FAMILY_COLOR, FAMILY_MARKER, DESI_COLOR,
-                    dodge_x, set_z_scale)
 from .methods import FAMILY_LABEL, FAMILY_ORDER
+from .style import (
+    DESI_COLOR,
+    FAMILY_COLOR,
+    FAMILY_MARKER,
+    MARKERS,
+    PALETTE,
+)
 
 
 # ---------------------------------------------------------------- theory curves
@@ -106,7 +111,6 @@ def plot_theory_ratio(ax, *models, reference="GR", z=None, zmin=0.0, zmax=2.0,
     Unlabelled by design -- it repeats the upper panel's series, and a second
     legend saying the same thing costs panel space for no information.
     """
-    from . import theory
     ref = _resolve(reference, k=k)
     flat = [m for grp in models
             for m in (grp if isinstance(grp, (list, tuple, set)) else [grp])]

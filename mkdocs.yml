@@ -1,0 +1,81 @@
+site_name: growth_review
+site_description: "Growth-rate review: compiled fsigma8 / BAO / S8 measurements, forecasts and theory curves, with plotting"
+site_url: https://corentinravoux.github.io/growth_review/
+repo_url: https://github.com/corentinravoux/growth_review
+repo_name: corentinravoux/growth_review
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.arithmatex:
+      generic: true
+  - toc:
+      permalink: true
+  - tables
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+            show_root_heading: true
+            show_source: true
+            show_signature_annotations: true
+            separate_signature: true
+            filters: ["!^_"]
+            members_order: source
+            group_by_category: true
+            heading_level: 2
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Theory curves: theory.md
+  - Redshift axis: redshift-axis.md
+  - API reference:
+      - Overview: api/index.md
+      - datasets: api/datasets.md
+      - io: api/io.md
+      - methods: api/methods.md
+      - style: api/style.md
+      - plotting: api/plotting.md
+      - figures: api/figures.md
+      - theory.registry: api/theory_registry.md
+      - theory.model: api/theory_model.md
+      - theory.growth: api/theory_growth.md
+      - theory.background: api/theory_background.md
+      - theory.tables: api/theory_tables.md
+      - theory.eftcamb: api/theory_eftcamb.md

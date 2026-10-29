@@ -102,7 +102,7 @@ def camb_module():
     if _camb is None:
         sys.path.insert(0, os.path.realpath(EFTCAMB_PATH))
         try:
-            import camb                               # noqa: PLC0415
+            import camb  # noqa: PLC0415
         except ImportError as exc:
             raise RuntimeError(_MISSING_MESSAGE) from exc
         _camb = camb

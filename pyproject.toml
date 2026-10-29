@@ -1,15 +1,16 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "growth_review"
-version = "0.3.0"
+dynamic = ["version"]
 description = "Growth-rate review: compiled fsigma8 / BAO / S8 measurements, forecasts and theory curves, with plotting"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { file = "LICENSE" }
-authors = [{ name = "Corentin Ravoux" }]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Corentin Ravoux", email = "corentin.ravoux.research@gmail.com" }]
 dependencies = [
     "numpy",
     "pandas",
@@ -18,7 +19,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "scipy"]
+dev = ["pytest", "pytest-cov", "ruff", "scipy"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24"]
 notebook = ["jupyter"]
 # The EFTCAMB backend needs scipy for the nDGP growth ODE (the integrator and
 # tolerances of the source notebook, kept as they are). It also needs a compiled
@@ -26,14 +28,45 @@ notebook = ["jupyter"]
 # Python dependency, so it cannot be declared here.
 eftcamb = ["scipy"]
 
+[project.urls]
+Homepage = "https://github.com/corentinravoux/growth_review"
+Documentation = "https://corentinravoux.github.io/growth_review/"
+Repository = "https://github.com/corentinravoux/growth_review"
+Issues = "https://github.com/corentinravoux/growth_review/issues"
+
 [project.scripts]
 growth-review-figures = "growth_review.figures:main"
 # Needs a compiled H-EFTCAMB (EFTCAMB_PATH); everything else in the package runs
 # without it. Writes theory tables the rest of the package reads.
 growth-review-eftcamb-export = "growth_review.theory.eftcamb:main"
 
+[tool.setuptools.dynamic]
+version = {attr = "growth_review.__version__"}
+
 [tool.setuptools.packages.find]
 include = ["growth_review*"]
 
 [tool.setuptools.package-data]
 growth_review = ["data/**/*.txt", "data/**/*.csv", "data/**/*.ecsv", "data/**/*.md", "*.mplstyle"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.bumpversion]
+current_version = "0.3.0"
+commit = true
+tag = true
+tag_name = "v{new_version}"
+message = "Bump version: {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "growth_review/__init__.py"
